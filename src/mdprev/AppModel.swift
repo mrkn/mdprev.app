@@ -4,25 +4,63 @@ import UniformTypeIdentifiers
 
 @MainActor
 final class AppModel: ObservableObject {
+    static let defaultBaseFontSize: Double = 16
+    static let baseFontSizeRange: ClosedRange<Double> = 12...30
+
     @Published var selectedFileURL: URL?
-    @Published var renderedHTML = MarkdownRenderer.placeholderHTML("Open a Markdown file to start previewing.")
+    @Published var renderedHTML: String
     @Published var statusMessage = "No file selected."
     @Published var autoReloadEnabled = true {
         didSet {
             configureWatcher()
         }
     }
+    @Published var baseFontSize: Double {
+        didSet {
+            let clamped = Self.clampBaseFontSize(baseFontSize)
+            if clamped != baseFontSize {
+                baseFontSize = clamped
+                return
+            }
+
+            guard oldValue != baseFontSize else {
+                return
+            }
+
+            userDefaults.set(baseFontSize, forKey: Self.baseFontSizeDefaultsKey)
+            reload()
+        }
+    }
     @Published var lastReloadDate: Date?
     @Published private(set) var selectAllRequestID: UInt = 0
 
     private let renderer: MarkdownRenderer
+    private let userDefaults: UserDefaults
     private var watcher: FileWatcher?
     private let windowBehaviorController = WindowBehaviorController()
     private var keyboardMonitor: Any?
     private var suppressCommandReleaseAfterSelectAll = false
 
-    init(renderer: MarkdownRenderer = MarkdownRenderer()) {
+    init(
+        renderer: MarkdownRenderer = MarkdownRenderer(),
+        userDefaults: UserDefaults = .standard
+    ) {
         self.renderer = renderer
+        self.userDefaults = userDefaults
+
+        let initialBaseFontSize: Double
+        if let storedValue = userDefaults.object(forKey: Self.baseFontSizeDefaultsKey) as? NSNumber {
+            initialBaseFontSize = Self.clampBaseFontSize(storedValue.doubleValue)
+        } else {
+            initialBaseFontSize = Self.defaultBaseFontSize
+        }
+        self.baseFontSize = initialBaseFontSize
+
+        self.renderedHTML = MarkdownRenderer.placeholderHTML(
+            Self.noFileSelectedMessage,
+            baseFontSize: initialBaseFontSize
+        )
+
         installKeyboardMonitor()
     }
 
@@ -52,9 +90,24 @@ final class AppModel: ObservableObject {
         selectAllRequestID &+= 1
     }
 
+    func increaseBaseFontSize() {
+        baseFontSize = min(baseFontSize + 1, Self.baseFontSizeRange.upperBound)
+    }
+
+    func decreaseBaseFontSize() {
+        baseFontSize = max(baseFontSize - 1, Self.baseFontSizeRange.lowerBound)
+    }
+
+    func resetBaseFontSize() {
+        baseFontSize = Self.defaultBaseFontSize
+    }
+
     func reload() {
         guard let fileURL = selectedFileURL else {
-            renderedHTML = MarkdownRenderer.placeholderHTML("Open a Markdown file to start previewing.")
+            renderedHTML = MarkdownRenderer.placeholderHTML(
+                Self.noFileSelectedMessage,
+                baseFontSize: baseFontSize
+            )
             statusMessage = "No file selected."
             lastReloadDate = nil
             return
@@ -62,11 +115,14 @@ final class AppModel: ObservableObject {
 
         do {
             let markdown = try String(contentsOf: fileURL, encoding: .utf8)
-            renderedHTML = renderer.renderHTML(markdown)
+            renderedHTML = renderer.renderHTML(markdown, baseFontSize: baseFontSize)
             statusMessage = "Previewing \(fileURL.lastPathComponent)"
             lastReloadDate = Date()
         } catch {
-            renderedHTML = MarkdownRenderer.placeholderHTML("Failed to load file.")
+            renderedHTML = MarkdownRenderer.placeholderHTML(
+                "Failed to load file.",
+                baseFontSize: baseFontSize
+            )
             statusMessage = "Could not read \(fileURL.lastPathComponent): \(error.localizedDescription)"
         }
     }
@@ -104,6 +160,13 @@ final class AppModel: ObservableObject {
 
         return types
     }()
+
+    private static let baseFontSizeDefaultsKey = "preview.baseFontSize"
+    private static let noFileSelectedMessage = "Open a Markdown file to start previewing."
+
+    private static func clampBaseFontSize(_ value: Double) -> Double {
+        min(max(value, baseFontSizeRange.lowerBound), baseFontSizeRange.upperBound)
+    }
 
     private func installKeyboardMonitor() {
         keyboardMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .flagsChanged]) { [weak self] event in

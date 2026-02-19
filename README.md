@@ -10,6 +10,7 @@
 - Live preview with automatic reload when the file changes on disk
 - Manual reload button (`Cmd+R`)
 - Auto-reload toggle
+- Adjustable base font size (`Cmd+=`, `Cmd+-`, `Cmd+0`)
 
 Editing is intentionally not included; this app is focused on previewing external files.
 

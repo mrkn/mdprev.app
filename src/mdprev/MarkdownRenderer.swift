@@ -3,7 +3,7 @@ import cmark_gfm
 import cmark_gfm_extensions
 
 protocol MarkdownRenderingEngine {
-    func renderHTML(_ markdown: String) -> String
+    func renderHTML(_ markdown: String, baseFontSize: Double) -> String
 }
 
 struct MarkdownRenderer {
@@ -14,11 +14,15 @@ struct MarkdownRenderer {
     }
 
     func renderHTML(_ markdown: String) -> String {
-        engine.renderHTML(markdown)
+        renderHTML(markdown, baseFontSize: Self.defaultBaseFontSize)
     }
 
-    static func placeholderHTML(_ message: String) -> String {
-        CMarkGFMRenderer.wrapHTML("<p>\(escapeHTML(message))</p>")
+    func renderHTML(_ markdown: String, baseFontSize: Double) -> String {
+        engine.renderHTML(markdown, baseFontSize: baseFontSize)
+    }
+
+    static func placeholderHTML(_ message: String, baseFontSize: Double = defaultBaseFontSize) -> String {
+        CMarkGFMRenderer.wrapHTML("<p>\(escapeHTML(message))</p>", baseFontSize: baseFontSize)
     }
 
     static func escapeHTML(_ text: String) -> String {
@@ -29,16 +33,18 @@ struct MarkdownRenderer {
         escaped = escaped.replacingOccurrences(of: "\"", with: "&quot;")
         return escaped
     }
+
+    static let defaultBaseFontSize: Double = 16
 }
 
 struct CMarkGFMRenderer: MarkdownRenderingEngine {
-    func renderHTML(_ markdown: String) -> String {
+    func renderHTML(_ markdown: String, baseFontSize: Double) -> String {
         guard let htmlBody = renderHTMLBody(markdown) else {
             let escaped = MarkdownRenderer.escapeHTML(markdown)
-            return Self.wrapHTML("<pre><code>\(escaped)</code></pre>")
+            return Self.wrapHTML("<pre><code>\(escaped)</code></pre>", baseFontSize: baseFontSize)
         }
 
-        return Self.wrapHTML(htmlBody)
+        return Self.wrapHTML(htmlBody, baseFontSize: baseFontSize)
     }
 
     func renderHTMLBody(_ markdown: String) -> String? {
@@ -88,8 +94,11 @@ struct CMarkGFMRenderer: MarkdownRenderingEngine {
         return String(cString: rendered)
     }
 
-    static func wrapHTML(_ htmlBody: String) -> String {
-        """
+    static func wrapHTML(_ htmlBody: String, baseFontSize: Double = MarkdownRenderer.defaultBaseFontSize) -> String {
+        let clampedFontSize = min(max(baseFontSize, 12), 30)
+        let fontSizeValue = cssPixelValue(clampedFontSize)
+
+        return """
         <!doctype html>
         <html>
           <head>
@@ -123,6 +132,7 @@ struct CMarkGFMRenderer: MarkdownRenderingEngine {
                 color: var(--text);
                 background: var(--bg);
                 font: -apple-system-body;
+                font-size: \(fontSizeValue)px;
                 line-height: 1.5;
                 overflow-wrap: anywhere;
               }
@@ -211,5 +221,13 @@ struct CMarkGFMRenderer: MarkdownRenderingEngine {
           </body>
         </html>
         """
+    }
+
+    private static func cssPixelValue(_ value: Double) -> String {
+        if value.rounded() == value {
+            return String(Int(value))
+        }
+
+        return String(format: "%.2f", locale: Locale(identifier: "en_US_POSIX"), value)
     }
 }

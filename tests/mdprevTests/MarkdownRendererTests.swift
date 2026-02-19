@@ -34,4 +34,12 @@ final class MarkdownRendererTests: XCTestCase {
         XCTAssertNotNil(html)
         XCTAssertTrue(html?.contains("<del>") ?? false)
     }
+
+    func testRendererEmbedsConfiguredBaseFontSize() {
+        let renderer = MarkdownRenderer()
+
+        let output = renderer.renderHTML("body", baseFontSize: 21)
+
+        XCTAssertTrue(output.contains("font-size: 21px;"))
+    }
 }

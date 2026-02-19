@@ -53,6 +53,36 @@ struct ContentView: View {
                 .toggleStyle(.switch)
                 .frame(width: 140)
 
+            Divider()
+                .frame(height: 18)
+
+            HStack(spacing: 8) {
+                Button {
+                    model.decreaseBaseFontSize()
+                } label: {
+                    Image(systemName: "textformat.size.smaller")
+                }
+                .help("Smaller Text")
+                .disabled(model.baseFontSize <= AppModel.baseFontSizeRange.lowerBound)
+
+                Text("\(Int(model.baseFontSize)) pt")
+                    .font(.system(size: 12, weight: .regular, design: .monospaced))
+                    .frame(width: 56, alignment: .trailing)
+
+                Button {
+                    model.increaseBaseFontSize()
+                } label: {
+                    Image(systemName: "textformat.size.larger")
+                }
+                .help("Larger Text")
+                .disabled(model.baseFontSize >= AppModel.baseFontSizeRange.upperBound)
+
+                Button("Reset") {
+                    model.resetBaseFontSize()
+                }
+                .disabled(model.baseFontSize == AppModel.defaultBaseFontSize)
+            }
+
             Spacer()
         }
         .padding(12)

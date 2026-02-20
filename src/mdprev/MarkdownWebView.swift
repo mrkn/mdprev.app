@@ -4,8 +4,11 @@ import WebKit
 
 struct MarkdownWebView: NSViewRepresentable {
     let html: String
+    let baseURL: URL?
     let selectAllRequestID: UInt
     let onFileDrop: (URL) -> Void
+    let onLocalFileLinkActivated: (URL) -> Void
+    let onExternalURLActivated: (URL) -> Void
     @Binding var isDropTargeted: Bool
 
     func makeCoordinator() -> Coordinator {
@@ -14,6 +17,15 @@ struct MarkdownWebView: NSViewRepresentable {
 
     func makeNSView(context: Context) -> FileDropWebView {
         let configuration = WKWebViewConfiguration()
+        let userContentController = WKUserContentController()
+        let linkTooltipScript = WKUserScript(
+            source: Self.linkHrefTooltipScript,
+            injectionTime: .atDocumentEnd,
+            forMainFrameOnly: true
+        )
+        userContentController.addUserScript(linkTooltipScript)
+        configuration.userContentController = userContentController
+
         let webView = FileDropWebView(frame: .zero, configuration: configuration)
         webView.navigationDelegate = context.coordinator
         webView.allowsBackForwardNavigationGestures = false
@@ -37,7 +49,11 @@ struct MarkdownWebView: NSViewRepresentable {
 
         if context.coordinator.lastLoadedHTML != html {
             context.coordinator.lastLoadedHTML = html
-            webView.loadHTMLString(html, baseURL: nil)
+            context.coordinator.lastLoadedBaseURL = baseURL?.standardizedFileURL
+            webView.loadHTMLString(html, baseURL: baseURL)
+        } else if context.coordinator.lastLoadedBaseURL != baseURL?.standardizedFileURL {
+            context.coordinator.lastLoadedBaseURL = baseURL?.standardizedFileURL
+            webView.loadHTMLString(html, baseURL: baseURL)
         }
 
         if context.coordinator.lastHandledSelectAllRequestID != selectAllRequestID {
@@ -46,9 +62,141 @@ struct MarkdownWebView: NSViewRepresentable {
         }
     }
 
+    private static let linkHrefTooltipDelayMilliseconds = 200
+
+    private static var linkHrefTooltipScript: String {
+        """
+        (() => {
+          const delayMs = \(linkHrefTooltipDelayMilliseconds);
+          const anchors = Array.from(document.querySelectorAll('a[href]'));
+          if (anchors.length === 0) return;
+
+          const tooltip = document.createElement('div');
+          tooltip.id = 'mdprev-link-tooltip';
+          tooltip.style.position = 'fixed';
+          tooltip.style.left = '0';
+          tooltip.style.top = '0';
+          tooltip.style.zIndex = '2147483647';
+          tooltip.style.pointerEvents = 'none';
+          tooltip.style.maxWidth = 'min(75vw, 900px)';
+          tooltip.style.padding = '6px 8px';
+          tooltip.style.borderRadius = '6px';
+          tooltip.style.border = '1px solid rgba(127, 127, 127, 0.55)';
+          tooltip.style.background = 'rgba(20, 20, 20, 0.92)';
+          tooltip.style.color = '#f3f3f3';
+          tooltip.style.font = '12px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+          tooltip.style.lineHeight = '1.35';
+          tooltip.style.whiteSpace = 'pre-wrap';
+          tooltip.style.wordBreak = 'break-all';
+          tooltip.style.opacity = '0';
+          tooltip.style.transition = 'opacity 80ms linear';
+          document.documentElement.appendChild(tooltip);
+
+          let showTimer = null;
+          let activeAnchor = null;
+          let latestX = 0;
+          let latestY = 0;
+
+          const clearShowTimer = () => {
+            if (showTimer !== null) {
+              clearTimeout(showTimer);
+              showTimer = null;
+            }
+          };
+
+          const hideTooltip = () => {
+            clearShowTimer();
+            tooltip.style.opacity = '0';
+            activeAnchor = null;
+          };
+
+          const positionTooltip = () => {
+            const offsetX = 14;
+            const offsetY = 18;
+            const margin = 10;
+
+            tooltip.style.left = '0px';
+            tooltip.style.top = '0px';
+            const width = tooltip.offsetWidth;
+            const height = tooltip.offsetHeight;
+
+            let x = latestX + offsetX;
+            let y = latestY + offsetY;
+
+            if (x + width > window.innerWidth - margin) {
+              x = Math.max(margin, window.innerWidth - width - margin);
+            }
+            if (y + height > window.innerHeight - margin) {
+              y = Math.max(margin, latestY - height - offsetY);
+            }
+
+            tooltip.style.left = `${x}px`;
+            tooltip.style.top = `${y}px`;
+          };
+
+          const showTooltip = (anchor) => {
+            const href = anchor.getAttribute('href');
+            if (!href) return;
+            activeAnchor = anchor;
+            tooltip.textContent = href;
+            tooltip.style.opacity = '1';
+            positionTooltip();
+          };
+
+          const scheduleShow = (anchor) => {
+            clearShowTimer();
+            showTimer = setTimeout(() => {
+              showTimer = null;
+              showTooltip(anchor);
+            }, delayMs);
+          };
+
+          anchors.forEach((anchor) => {
+            const href = anchor.getAttribute('href');
+            if (!href) return;
+
+            anchor.addEventListener('mouseenter', (event) => {
+              latestX = event.clientX;
+              latestY = event.clientY;
+              scheduleShow(anchor);
+            });
+
+            anchor.addEventListener('mousemove', (event) => {
+              latestX = event.clientX;
+              latestY = event.clientY;
+              if (activeAnchor === anchor) {
+                positionTooltip();
+                return;
+              }
+
+              if (showTimer === null) {
+                scheduleShow(anchor);
+              }
+            });
+
+            anchor.addEventListener('mouseleave', () => {
+              if (activeAnchor === anchor) {
+                hideTooltip();
+              } else {
+                clearShowTimer();
+              }
+            });
+
+            anchor.addEventListener('mousedown', hideTooltip);
+            anchor.addEventListener('click', hideTooltip);
+            anchor.addEventListener('blur', hideTooltip);
+          });
+
+          window.addEventListener('scroll', hideTooltip, { passive: true });
+          window.addEventListener('blur', hideTooltip);
+        })();
+        """
+    }
+
     final class Coordinator: NSObject, WKNavigationDelegate {
         var parent: MarkdownWebView
         var lastLoadedHTML: String?
+        var lastLoadedBaseURL: URL?
         var lastHandledSelectAllRequestID: UInt = 0
 
         init(parent: MarkdownWebView) {
@@ -77,18 +225,25 @@ struct MarkdownWebView: NSViewRepresentable {
                 return
             }
 
-            if let fileURL = Self.fileURLForOpenAction(from: url) {
+            if let fileURL = Self.localFileURLFromActivatedLink(url) {
                 Task { @MainActor in
-                    self.handleDrop(fileURL)
+                    parent.onLocalFileLinkActivated(fileURL)
                 }
                 decisionHandler(.cancel)
                 return
             }
 
-            decisionHandler(.allow)
+            Task { @MainActor in
+                parent.onExternalURLActivated(url)
+            }
+            decisionHandler(.cancel)
         }
 
-        private static func fileURLForOpenAction(from url: URL) -> URL? {
+        private static func localFileURLFromActivatedLink(_ url: URL) -> URL? {
+            if url.isFileURL {
+                return url.standardizedFileURL
+            }
+
             guard url.scheme == "mdprev-open-file",
                   let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
                   let path = components.queryItems?.first(where: { $0.name == "path" })?.value else {

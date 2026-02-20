@@ -1,8 +1,10 @@
+import AppKit
 import SwiftUI
 
 struct ContentView: View {
     @ObservedObject var model: AppModel
     @State private var isDropTargeted = false
+    @Environment(\.openWindow) private var openWindow
 
     var body: some View {
         VStack(spacing: 0) {
@@ -11,9 +13,19 @@ struct ContentView: View {
 
             MarkdownWebView(
                 html: model.renderedHTML,
+                baseURL: model.selectedFileURL?.deletingLastPathComponent(),
                 selectAllRequestID: model.selectAllRequestID,
                 onFileDrop: { fileURL in
                     model.openFile(fileURL)
+                },
+                onLocalFileLinkActivated: { fileURL in
+                    model.handleActivatedLocalFileLink(fileURL) { markdownURL in
+                        let sourceWindowFrame = model.windowFrame ?? NSApp.keyWindow?.frame ?? NSApp.mainWindow?.frame
+                        openWindow(value: PreviewWindowPayload(fileURL: markdownURL, sourceWindowFrame: sourceWindowFrame))
+                    }
+                },
+                onExternalURLActivated: { url in
+                    model.handleActivatedExternalURL(url)
                 },
                 isDropTargeted: $isDropTargeted
             )

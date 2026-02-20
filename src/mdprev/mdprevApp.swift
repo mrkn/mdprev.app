@@ -1,7 +1,7 @@
 import AppKit
 import SwiftUI
 
-private struct PreviewWindowPayload: Hashable, Codable {
+struct PreviewWindowPayload: Hashable, Codable {
     private static let cascadeOffsetX: CGFloat = 24
     private static let cascadeOffsetY: CGFloat = 24
 

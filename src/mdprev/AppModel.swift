@@ -131,6 +131,37 @@ final class AppModel: ObservableObject {
         openFile(normalizedURL)
     }
 
+    func handleActivatedLocalFileLink(
+        _ fileURL: URL,
+        openMarkdownInNewWindow: (URL) -> Void
+    ) {
+        switch LocalFileLinkResolver.resolve(fileURL) {
+        case .openMarkdownInNewWindow(let markdownURL):
+            openMarkdownInNewWindow(markdownURL)
+
+        case .revealParentDirectory(let directoryURL):
+            statusMessage = "Opened folder for \(fileURL.lastPathComponent)"
+            NSWorkspace.shared.open(directoryURL)
+
+        case .missingFile(let missingURL):
+            statusMessage = "Linked file not found: \(missingURL.lastPathComponent)"
+            NSSound.beep()
+        }
+    }
+
+    func handleActivatedExternalURL(_ url: URL) {
+        Task { [weak self] in
+            guard let self else {
+                return
+            }
+
+            let inspection = await ExternalURLInspector.inspect(url)
+            await MainActor.run {
+                self.confirmAndOpenExternalURL(url, inspection: inspection)
+            }
+        }
+    }
+
     func attachWindow(_ window: NSWindow) {
         guard attachedWindow !== window else {
             return
@@ -315,6 +346,30 @@ final class AppModel: ObservableObject {
             if self.selectedFileURL == nil {
                 self.reload()
             }
+        }
+    }
+
+    private func confirmAndOpenExternalURL(_ url: URL, inspection: ExternalURLInspection) {
+        let prompt = ExternalURLPromptBuilder.build(url: url, inspection: inspection)
+
+        let alert = NSAlert()
+        alert.messageText = prompt.messageText
+        alert.informativeText = prompt.informativeText
+        alert.alertStyle = prompt.showsWarningStyle ? .warning : .informational
+        alert.addButton(withTitle: "Open")
+        alert.addButton(withTitle: "Cancel")
+
+        guard alert.runModal() == .alertFirstButtonReturn else {
+            statusMessage = "Cancelled opening external URL."
+            return
+        }
+
+        do {
+            try ExternalURLInspector.openWithOpenCommand(url)
+            statusMessage = "Opened external URL: \(url.absoluteString)"
+        } catch {
+            statusMessage = "Failed to open external URL: \(error.localizedDescription)"
+            NSSound.beep()
         }
     }
 }

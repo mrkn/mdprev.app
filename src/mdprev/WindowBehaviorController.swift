@@ -9,7 +9,7 @@ final class WindowBehaviorController: NSObject {
         NotificationCenter.default.removeObserver(self)
     }
 
-    func attach(window: NSWindow) {
+    func attach(window: NSWindow, preferredInitialOrigin: CGPoint? = nil) {
         guard self.window !== window else {
             return
         }
@@ -18,8 +18,41 @@ final class WindowBehaviorController: NSObject {
 
         self.window = window
         configure(window)
+        applyInitialOrigin(preferredInitialOrigin, to: window)
         installObservers(for: window)
         updateTrafficLightAppearance()
+    }
+
+    private func applyInitialOrigin(_ origin: CGPoint?, to window: NSWindow) {
+        guard let origin else {
+            return
+        }
+
+        DispatchQueue.main.async { [weak window] in
+            guard let window else {
+                return
+            }
+
+            let visibleFrame = (window.screen ?? NSScreen.main)?.visibleFrame
+            let targetOrigin = Self.clampedOrigin(origin, forWindowFrame: window.frame, in: visibleFrame)
+            window.setFrameOrigin(targetOrigin)
+        }
+    }
+
+    private static func clampedOrigin(_ origin: CGPoint, forWindowFrame frame: CGRect, in visibleFrame: CGRect?) -> CGPoint {
+        guard let visibleFrame else {
+            return origin
+        }
+
+        let minX = visibleFrame.minX
+        let maxX = max(minX, visibleFrame.maxX - frame.width)
+        let minY = visibleFrame.minY
+        let maxY = max(minY, visibleFrame.maxY - frame.height)
+
+        return CGPoint(
+            x: min(max(origin.x, minX), maxX),
+            y: min(max(origin.y, minY), maxY)
+        )
     }
 
     private func configure(_ window: NSWindow) {

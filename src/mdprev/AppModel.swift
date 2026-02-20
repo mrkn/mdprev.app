@@ -36,17 +36,25 @@ final class AppModel: ObservableObject {
 
     private let renderer: MarkdownRenderer
     private let userDefaults: UserDefaults
+    private let recentFilesStore: RecentFilesStore
+    private var initialWindowOrigin: CGPoint?
     private var watcher: FileWatcher?
+    private weak var attachedWindow: NSWindow?
     private let windowBehaviorController = WindowBehaviorController()
     private var keyboardMonitor: Any?
     private var suppressCommandReleaseAfterSelectAll = false
 
     init(
         renderer: MarkdownRenderer = MarkdownRenderer(),
-        userDefaults: UserDefaults = .standard
+        userDefaults: UserDefaults = .standard,
+        recentFilesStore: RecentFilesStore = RecentFilesStore(),
+        initialFileURL: URL? = nil,
+        initialWindowOrigin: CGPoint? = nil
     ) {
         self.renderer = renderer
         self.userDefaults = userDefaults
+        self.recentFilesStore = recentFilesStore
+        self.initialWindowOrigin = initialWindowOrigin
 
         let initialBaseFontSize: Double
         if let storedValue = userDefaults.object(forKey: Self.baseFontSizeDefaultsKey) as? NSNumber {
@@ -62,9 +70,21 @@ final class AppModel: ObservableObject {
         )
 
         installKeyboardMonitor()
+
+        if let initialFileURL {
+            openFile(initialFileURL)
+        }
     }
 
     func requestFileOpen() {
+        guard let fileURL = Self.chooseFileURL() else {
+            return
+        }
+
+        openFile(fileURL)
+    }
+
+    static func chooseFileURL() -> URL? {
         let panel = NSOpenPanel()
         panel.title = "Choose a Markdown file"
         panel.allowsMultipleSelection = false
@@ -72,18 +92,31 @@ final class AppModel: ObservableObject {
         panel.allowedContentTypes = Self.supportedContentTypes
 
         if panel.runModal() == .OK, let fileURL = panel.url {
-            openFile(fileURL)
+            return fileURL.standardizedFileURL
         }
+
+        return nil
     }
 
     func openFile(_ fileURL: URL) {
-        selectedFileURL = fileURL
+        let normalizedFileURL = fileURL.standardizedFileURL
+        selectedFileURL = normalizedFileURL
         reload()
         configureWatcher()
+
+        if FileManager.default.fileExists(atPath: normalizedFileURL.path) {
+            recentFilesStore.record(normalizedFileURL)
+        }
     }
 
     func attachWindow(_ window: NSWindow) {
-        windowBehaviorController.attach(window: window)
+        attachedWindow = window
+        windowBehaviorController.attach(window: window, preferredInitialOrigin: initialWindowOrigin)
+        initialWindowOrigin = nil
+    }
+
+    var windowFrame: CGRect? {
+        attachedWindow?.frame
     }
 
     func requestSelectAll() {
@@ -171,6 +204,9 @@ final class AppModel: ObservableObject {
     private func installKeyboardMonitor() {
         keyboardMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .flagsChanged]) { [weak self] event in
             guard let self else {
+                return event
+            }
+            guard self.attachedWindow?.isKeyWindow == true else {
                 return event
             }
 

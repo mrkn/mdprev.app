@@ -15,6 +15,7 @@ struct MarkdownWebView: NSViewRepresentable {
     func makeNSView(context: Context) -> FileDropWebView {
         let configuration = WKWebViewConfiguration()
         let webView = FileDropWebView(frame: .zero, configuration: configuration)
+        webView.navigationDelegate = context.coordinator
         webView.allowsBackForwardNavigationGestures = false
         webView.allowsMagnification = false
         webView.underPageBackgroundColor = .clear
@@ -45,7 +46,7 @@ struct MarkdownWebView: NSViewRepresentable {
         }
     }
 
-    final class Coordinator {
+    final class Coordinator: NSObject, WKNavigationDelegate {
         var parent: MarkdownWebView
         var lastLoadedHTML: String?
         var lastHandledSelectAllRequestID: UInt = 0
@@ -63,6 +64,38 @@ struct MarkdownWebView: NSViewRepresentable {
         @MainActor
         func handleDragStateChange(_ targeted: Bool) {
             parent.isDropTargeted = targeted
+        }
+
+        func webView(
+            _ webView: WKWebView,
+            decidePolicyFor navigationAction: WKNavigationAction,
+            decisionHandler: @escaping @MainActor @Sendable (WKNavigationActionPolicy) -> Void
+        ) {
+            guard navigationAction.navigationType == .linkActivated,
+                  let url = navigationAction.request.url else {
+                decisionHandler(.allow)
+                return
+            }
+
+            if let fileURL = Self.fileURLForOpenAction(from: url) {
+                Task { @MainActor in
+                    self.handleDrop(fileURL)
+                }
+                decisionHandler(.cancel)
+                return
+            }
+
+            decisionHandler(.allow)
+        }
+
+        private static func fileURLForOpenAction(from url: URL) -> URL? {
+            guard url.scheme == "mdprev-open-file",
+                  let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
+                  let path = components.queryItems?.first(where: { $0.name == "path" })?.value else {
+                return nil
+            }
+
+            return URL(fileURLWithPath: path).standardizedFileURL
         }
     }
 }

@@ -1,4 +1,5 @@
 import AppKit
+import Combine
 import Foundation
 import UniformTypeIdentifiers
 
@@ -42,6 +43,7 @@ final class AppModel: ObservableObject {
     private weak var attachedWindow: NSWindow?
     private let windowBehaviorController = WindowBehaviorController()
     private var keyboardMonitor: Any?
+    private var recentFilesObserver: AnyCancellable?
     private var suppressCommandReleaseAfterSelectAll = false
 
     init(
@@ -66,10 +68,12 @@ final class AppModel: ObservableObject {
 
         self.renderedHTML = MarkdownRenderer.placeholderHTML(
             Self.noFileSelectedMessage,
-            baseFontSize: initialBaseFontSize
+            baseFontSize: initialBaseFontSize,
+            recentFiles: recentFilesStore.fileURLs
         )
 
         installKeyboardMonitor()
+        observeRecentFiles()
 
         if let initialFileURL {
             openFile(initialFileURL)
@@ -109,6 +113,24 @@ final class AppModel: ObservableObject {
         }
     }
 
+    func openRecentFile(_ fileURL: URL) {
+        let normalizedURL = fileURL.standardizedFileURL
+        guard FileManager.default.fileExists(atPath: normalizedURL.path) else {
+            recentFilesStore.remove(normalizedURL)
+            statusMessage = "File not found: \(normalizedURL.lastPathComponent)"
+            NSSound.beep()
+            renderedHTML = MarkdownRenderer.placeholderHTML(
+                Self.noFileSelectedMessage,
+                baseFontSize: baseFontSize,
+                recentFiles: recentFilesStore.fileURLs
+            )
+            lastReloadDate = nil
+            return
+        }
+
+        openFile(normalizedURL)
+    }
+
     func attachWindow(_ window: NSWindow) {
         attachedWindow = window
         windowBehaviorController.attach(window: window, preferredInitialOrigin: initialWindowOrigin)
@@ -139,7 +161,8 @@ final class AppModel: ObservableObject {
         guard let fileURL = selectedFileURL else {
             renderedHTML = MarkdownRenderer.placeholderHTML(
                 Self.noFileSelectedMessage,
-                baseFontSize: baseFontSize
+                baseFontSize: baseFontSize,
+                recentFiles: recentFilesStore.fileURLs
             )
             statusMessage = "No file selected."
             lastReloadDate = nil
@@ -231,6 +254,18 @@ final class AppModel: ObservableObject {
             }
 
             return event
+        }
+    }
+
+    private func observeRecentFiles() {
+        recentFilesObserver = recentFilesStore.$fileURLs.sink { [weak self] _ in
+            guard let self else {
+                return
+            }
+
+            if self.selectedFileURL == nil {
+                self.reload()
+            }
         }
     }
 }

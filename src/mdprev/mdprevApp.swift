@@ -6,13 +6,13 @@ private struct PreviewWindowPayload: Hashable, Codable {
     private static let cascadeOffsetY: CGFloat = 24
 
     let id: UUID
-    let filePath: String
+    let filePath: String?
     let preferredWindowOriginX: CGFloat?
     let preferredWindowOriginY: CGFloat?
 
-    init(fileURL: URL, sourceWindowFrame: CGRect? = nil) {
+    init(fileURL: URL?, sourceWindowFrame: CGRect? = nil) {
         self.id = UUID()
-        self.filePath = fileURL.standardizedFileURL.path
+        self.filePath = fileURL?.standardizedFileURL.path
 
         if let sourceWindowFrame {
             preferredWindowOriginX = sourceWindowFrame.origin.x + Self.cascadeOffsetX
@@ -23,8 +23,12 @@ private struct PreviewWindowPayload: Hashable, Codable {
         }
     }
 
-    var fileURL: URL {
-        URL(fileURLWithPath: filePath).standardizedFileURL
+    var fileURL: URL? {
+        guard let filePath else {
+            return nil
+        }
+
+        return URL(fileURLWithPath: filePath).standardizedFileURL
     }
 
     var preferredWindowOrigin: CGPoint? {
@@ -141,17 +145,25 @@ private struct MDPrevCommands: Commands {
     }
 
     private func openRecentFile(_ fileURL: URL) {
-        guard FileManager.default.fileExists(atPath: fileURL.path) else {
-            recentFilesStore.remove(fileURL)
-            NSSound.beep()
+        if let focusedModel {
+            focusedModel.openRecentFile(fileURL)
+            if NSEvent.modifierFlags.contains(.option) {
+                openEmptyWindow()
+            }
             return
         }
 
-        if NSEvent.modifierFlags.contains(.option) || focusedModel == nil {
-            openFileInNewWindow(fileURL)
-        } else {
-            focusedModel?.openFile(fileURL)
+        if NSEvent.modifierFlags.contains(.option) {
+            openEmptyWindow()
+            return
         }
+
+        openFileInNewWindow(fileURL)
+    }
+
+    private func openEmptyWindow() {
+        let sourceWindowFrame = focusedModel?.windowFrame ?? NSApp.keyWindow?.frame ?? NSApp.mainWindow?.frame
+        openWindow(value: PreviewWindowPayload(fileURL: nil, sourceWindowFrame: sourceWindowFrame))
     }
 
     private func openFileInNewWindow(_ fileURL: URL) {

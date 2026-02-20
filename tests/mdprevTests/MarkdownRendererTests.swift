@@ -42,4 +42,17 @@ final class MarkdownRendererTests: XCTestCase {
 
         XCTAssertTrue(output.contains("font-size: 21px;"))
     }
+
+    func testPlaceholderRendersRecentFilesAsOpenLinks() {
+        let fileURL = URL(fileURLWithPath: "/tmp/sample.md")
+
+        let output = MarkdownRenderer.placeholderHTML(
+            "Open a Markdown file to start previewing.",
+            recentFiles: [fileURL]
+        )
+
+        XCTAssertTrue(output.contains("Recent Files"))
+        XCTAssertTrue(output.contains("sample.md"))
+        XCTAssertTrue(output.contains("mdprev-open-file://open?path="))
+    }
 }

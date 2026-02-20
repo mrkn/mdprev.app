@@ -21,8 +21,35 @@ struct MarkdownRenderer {
         engine.renderHTML(markdown, baseFontSize: baseFontSize)
     }
 
-    static func placeholderHTML(_ message: String, baseFontSize: Double = defaultBaseFontSize) -> String {
-        CMarkGFMRenderer.wrapHTML("<p>\(escapeHTML(message))</p>", baseFontSize: baseFontSize)
+    static func placeholderHTML(
+        _ message: String,
+        baseFontSize: Double = defaultBaseFontSize,
+        recentFiles: [URL] = []
+    ) -> String {
+        var body = "<p>\(escapeHTML(message))</p>"
+
+        if !recentFiles.isEmpty {
+            body += "<section class=\"recent-files\">"
+            body += "<h2>Recent Files</h2>"
+            body += "<ul>"
+
+            for fileURL in recentFiles {
+                let title = escapeHTML(fileURL.lastPathComponent)
+                let path = escapeHTML(fileURL.path)
+                let href = openRecentFileHref(for: fileURL)
+                body += """
+                <li>
+                  <a href="\(href)">\(title)</a>
+                  <div class="recent-file-path">\(path)</div>
+                </li>
+                """
+            }
+
+            body += "</ul>"
+            body += "</section>"
+        }
+
+        return CMarkGFMRenderer.wrapHTML(body, baseFontSize: baseFontSize)
     }
 
     static func escapeHTML(_ text: String) -> String {
@@ -35,6 +62,18 @@ struct MarkdownRenderer {
     }
 
     static let defaultBaseFontSize: Double = 16
+
+    private static func openRecentFileHref(for fileURL: URL) -> String {
+        let path = fileURL.standardizedFileURL.path
+        var components = URLComponents()
+        components.scheme = "mdprev-open-file"
+        components.host = "open"
+        components.queryItems = [
+            URLQueryItem(name: "path", value: path)
+        ]
+
+        return components.string ?? "#"
+    }
 }
 
 struct CMarkGFMRenderer: MarkdownRenderingEngine {
@@ -213,6 +252,40 @@ struct CMarkGFMRenderer: MarkdownRenderingEngine {
                 a {
                   color: #58a6ff;
                 }
+              }
+
+              .recent-files {
+                margin-top: 28px;
+              }
+
+              .recent-files h2 {
+                font-size: 1.05em;
+                margin: 0 0 12px;
+              }
+
+              .recent-files ul {
+                list-style: none;
+                padding: 0;
+                margin: 0;
+              }
+
+              .recent-files li {
+                margin: 0;
+                padding: 10px 12px;
+                border: 1px solid var(--border);
+                border-radius: 8px;
+                background: var(--code-bg);
+              }
+
+              .recent-files li + li {
+                margin-top: 10px;
+              }
+
+              .recent-file-path {
+                margin-top: 4px;
+                font-size: 0.86em;
+                color: var(--muted);
+                overflow-wrap: anywhere;
               }
             </style>
           </head>

@@ -12,6 +12,7 @@
 - Auto-reload toggle
 - Adjustable base font size (`Cmd+=`, `Cmd+-`, `Cmd+0`)
 - Recent files list in `File > Open Recent` (up to 10 entries)
+- Startup screen shows clickable recent files list
 
 Editing is intentionally not included; this app is focused on previewing external files.
 

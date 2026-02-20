@@ -38,6 +38,22 @@ final class RecentFilesStoreTests: XCTestCase {
         XCTAssertEqual(reloadedStore.fileURLs.map(\.path), [fileURL.standardizedFileURL.path])
     }
 
+    func testLoadCapsEntriesToConfiguredMaximum() {
+        let defaults = makeIsolatedDefaults()
+        let key = "recent.load.cap.test"
+        let temp = FileManager.default.temporaryDirectory
+        let paths = (0..<12).map { index in
+            temp.appendingPathComponent("cap-\(index).md").path
+        }
+        defaults.set(paths, forKey: key)
+
+        let store = RecentFilesStore(userDefaults: defaults, defaultsKey: key, maxEntries: 10)
+
+        XCTAssertEqual(store.fileURLs.count, 10)
+        XCTAssertEqual(store.fileURLs.first?.lastPathComponent, "cap-0.md")
+        XCTAssertEqual(store.fileURLs.last?.lastPathComponent, "cap-9.md")
+    }
+
     private func makeIsolatedDefaults() -> UserDefaults {
         let suiteName = "mdprev.tests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!

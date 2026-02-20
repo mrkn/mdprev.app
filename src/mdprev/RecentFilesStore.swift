@@ -19,7 +19,12 @@ final class RecentFilesStore: ObservableObject {
         self.userDefaults = userDefaults
         self.defaultsKey = defaultsKey
         self.maxEntries = max(1, maxEntries)
-        self.fileURLs = Self.loadURLs(userDefaults: userDefaults, defaultsKey: defaultsKey)
+        let loadedURLs = Self.loadURLs(userDefaults: userDefaults, defaultsKey: defaultsKey)
+        self.fileURLs = Array(loadedURLs.prefix(self.maxEntries))
+
+        if self.fileURLs.count != loadedURLs.count {
+            persist()
+        }
     }
 
     func record(_ fileURL: URL) {

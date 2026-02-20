@@ -223,10 +223,9 @@ struct CMarkGFMRenderer: MarkdownRenderingEngine {
 
               table {
                 border-collapse: collapse;
-                display: block;
+                width: 100%;
                 max-width: 100%;
-                overflow-x: auto;
-                white-space: nowrap;
+                table-layout: fixed;
               }
 
               table th,
@@ -234,6 +233,9 @@ struct CMarkGFMRenderer: MarkdownRenderingEngine {
                 border: 1px solid var(--border);
                 padding: 6px 13px;
                 vertical-align: top;
+                white-space: normal;
+                overflow-wrap: anywhere;
+                word-break: break-word;
               }
 
               table th {

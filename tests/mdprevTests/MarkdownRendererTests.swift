@@ -35,6 +35,16 @@ final class MarkdownRendererTests: XCTestCase {
         XCTAssertTrue(html?.contains("<del>") ?? false)
     }
 
+    func testRendererUsesTableStylesThatFitViewport() {
+        let renderer = MarkdownRenderer()
+
+        let output = renderer.renderHTML("| A |\n| - |\n| veryveryveryveryveryveryveryveryveryveryveryveryverylongtext |")
+
+        XCTAssertTrue(output.contains("table-layout: fixed;"))
+        XCTAssertTrue(output.contains("overflow-wrap: anywhere;"))
+        XCTAssertFalse(output.contains("white-space: nowrap;"))
+    }
+
     func testRendererEmbedsConfiguredBaseFontSize() {
         let renderer = MarkdownRenderer()
 

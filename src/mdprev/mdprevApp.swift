@@ -91,6 +91,11 @@ private struct MDPrevCommands: Commands {
 
     var body: some Commands {
         CommandGroup(after: .newItem) {
+            Button("New Tab") {
+                openNewTab()
+            }
+            .keyboardShortcut("t", modifiers: [.command])
+
             Button("Open Markdown File...") {
                 if let focusedModel {
                     focusedModel.requestFileOpen()
@@ -228,6 +233,13 @@ private struct MDPrevCommands: Commands {
     private func openFileInNewWindow(_ fileURL: URL) {
         let sourceWindowFrame = focusedModel?.windowFrame ?? NSApp.keyWindow?.frame ?? NSApp.mainWindow?.frame
         openWindow(value: PreviewWindowPayload(fileURL: fileURL, sourceWindowFrame: sourceWindowFrame))
+    }
+
+    private func openNewTab() {
+        if let sourceWindow = NSApp.keyWindow ?? NSApp.mainWindow {
+            WindowTabbingCoordinator.shared.requestTab(from: sourceWindow)
+        }
+        openEmptyWindow()
     }
 }
 

@@ -21,6 +21,13 @@ final class WindowBehaviorController: NSObject {
         applyInitialOrigin(preferredInitialOrigin, to: window)
         installObservers(for: window)
         updateTrafficLightAppearance()
+        DispatchQueue.main.async { [weak window] in
+            guard let window else {
+                return
+            }
+
+            WindowTabbingCoordinator.shared.consumePendingRequest(with: window)
+        }
     }
 
     private func applyInitialOrigin(_ origin: CGPoint?, to window: NSWindow) {
@@ -57,6 +64,8 @@ final class WindowBehaviorController: NSObject {
 
     private func configure(_ window: NSWindow) {
         window.styleMask.insert([.titled, .closable, .miniaturizable, .resizable])
+        window.tabbingMode = .preferred
+        window.tabbingIdentifier = "mdprev.preview"
         window.titleVisibility = .visible
         window.titlebarAppearsTransparent = false
         window.isMovableByWindowBackground = false

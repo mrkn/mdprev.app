@@ -3,7 +3,12 @@ import cmark_gfm
 import cmark_gfm_extensions
 
 protocol MarkdownRenderingEngine {
-    func renderHTML(_ markdown: String, baseFontSize: Double, theme: PreviewTheme) -> String
+    func renderHTML(
+        _ markdown: String,
+        baseFontSize: Double,
+        theme: PreviewTheme,
+        syntaxTheme: SyntaxHighlightTheme
+    ) -> String
 }
 
 struct MarkdownRenderer {
@@ -17,22 +22,30 @@ struct MarkdownRenderer {
         renderHTML(
             markdown,
             baseFontSize: Self.defaultBaseFontSize,
-            theme: PreviewTheme.defaultTheme
+            theme: PreviewTheme.defaultTheme,
+            syntaxTheme: SyntaxHighlightTheme.defaultTheme
         )
     }
 
     func renderHTML(
         _ markdown: String,
         baseFontSize: Double,
-        theme: PreviewTheme = PreviewTheme.defaultTheme
+        theme: PreviewTheme = PreviewTheme.defaultTheme,
+        syntaxTheme: SyntaxHighlightTheme = SyntaxHighlightTheme.defaultTheme
     ) -> String {
-        engine.renderHTML(markdown, baseFontSize: baseFontSize, theme: theme)
+        engine.renderHTML(
+            markdown,
+            baseFontSize: baseFontSize,
+            theme: theme,
+            syntaxTheme: syntaxTheme
+        )
     }
 
     static func placeholderHTML(
         _ message: String,
         baseFontSize: Double = defaultBaseFontSize,
         theme: PreviewTheme = PreviewTheme.defaultTheme,
+        syntaxTheme: SyntaxHighlightTheme = SyntaxHighlightTheme.defaultTheme,
         recentFiles: [URL] = []
     ) -> String {
         var body = "<p>\(escapeHTML(message))</p>"
@@ -58,7 +71,12 @@ struct MarkdownRenderer {
             body += "</section>"
         }
 
-        return CMarkGFMRenderer.wrapHTML(body, baseFontSize: baseFontSize, theme: theme)
+        return CMarkGFMRenderer.wrapHTML(
+            body,
+            baseFontSize: baseFontSize,
+            theme: theme,
+            syntaxTheme: syntaxTheme
+        )
     }
 
     static func escapeHTML(_ text: String) -> String {
@@ -86,7 +104,12 @@ struct MarkdownRenderer {
 }
 
 struct CMarkGFMRenderer: MarkdownRenderingEngine {
-    func renderHTML(_ markdown: String, baseFontSize: Double, theme: PreviewTheme) -> String {
+    func renderHTML(
+        _ markdown: String,
+        baseFontSize: Double,
+        theme: PreviewTheme,
+        syntaxTheme: SyntaxHighlightTheme
+    ) -> String {
         let codeBlockMetadata = Self.extractFencedCodeMetadata(from: markdown)
 
         guard let htmlBody = renderHTMLBody(markdown) else {
@@ -98,12 +121,18 @@ struct CMarkGFMRenderer: MarkdownRenderingEngine {
             return Self.wrapHTML(
                 numberedFallback,
                 baseFontSize: baseFontSize,
-                theme: theme
+                theme: theme,
+                syntaxTheme: syntaxTheme
             )
         }
 
         let numberedHTMLBody = Self.addLineNumbers(to: htmlBody, metadata: codeBlockMetadata)
-        return Self.wrapHTML(numberedHTMLBody, baseFontSize: baseFontSize, theme: theme)
+        return Self.wrapHTML(
+            numberedHTMLBody,
+            baseFontSize: baseFontSize,
+            theme: theme,
+            syntaxTheme: syntaxTheme
+        )
     }
 
     func renderHTMLBody(_ markdown: String) -> String? {
@@ -156,13 +185,18 @@ struct CMarkGFMRenderer: MarkdownRenderingEngine {
     static func wrapHTML(
         _ htmlBody: String,
         baseFontSize: Double = MarkdownRenderer.defaultBaseFontSize,
-        theme: PreviewTheme = PreviewTheme.defaultTheme
+        theme: PreviewTheme = PreviewTheme.defaultTheme,
+        syntaxTheme: SyntaxHighlightTheme = SyntaxHighlightTheme.defaultTheme
     ) -> String {
         let clampedFontSize = min(max(baseFontSize, 12), 30)
         let fontSizeValue = cssPixelValue(clampedFontSize)
         let rootVariables = cssVariables(theme.baseColors)
         let darkModeVariables = theme.darkModeCSSVariables
         let colorScheme = theme.colorScheme
+        let syntaxThemeCSS = HighlightJSSupport.syntaxThemeCSS(
+            for: syntaxTheme,
+            previewTheme: theme
+        )
 
         return """
         <!doctype html>
@@ -292,7 +326,7 @@ struct CMarkGFMRenderer: MarkdownRenderingEngine {
                 min-width: 0;
               }
 
-              \(HighlightJSSupport.syntaxTokenCSS)
+              \(syntaxThemeCSS)
 
               code {
                 background: var(--code-bg);
@@ -396,14 +430,6 @@ struct CMarkGFMRenderer: MarkdownRenderingEngine {
                 --border: \(colors.border);
                 --row-alt: \(colors.rowAlternate);
                 --link: \(colors.link);
-                --syntax-text: \(colors.syntaxText);
-                --syntax-comment: \(colors.syntaxComment);
-                --syntax-keyword: \(colors.syntaxKeyword);
-                --syntax-string: \(colors.syntaxString);
-                --syntax-number: \(colors.syntaxNumber);
-                --syntax-type: \(colors.syntaxType);
-                --syntax-function: \(colors.syntaxFunction);
-                --syntax-variable: \(colors.syntaxVariable);
         """
     }
 
@@ -853,14 +879,6 @@ fileprivate struct PreviewThemeColors {
     let border: String
     let rowAlternate: String
     let link: String
-    let syntaxText: String
-    let syntaxComment: String
-    let syntaxKeyword: String
-    let syntaxString: String
-    let syntaxNumber: String
-    let syntaxType: String
-    let syntaxFunction: String
-    let syntaxVariable: String
 }
 
 private extension PreviewTheme {
@@ -885,15 +903,7 @@ private extension PreviewTheme {
                 codeBackground: "#f6f8fa",
                 border: "#d0d7de",
                 rowAlternate: "#f6f8fa",
-                link: "#0969da",
-                syntaxText: "#1f2328",
-                syntaxComment: "#6e7781",
-                syntaxKeyword: "#cf222e",
-                syntaxString: "#0a3069",
-                syntaxNumber: "#0550ae",
-                syntaxType: "#953800",
-                syntaxFunction: "#8250df",
-                syntaxVariable: "#1f2328"
+                link: "#0969da"
             )
         case .dark:
             return PreviewThemeColors(
@@ -903,15 +913,7 @@ private extension PreviewTheme {
                 codeBackground: "#161b22",
                 border: "#30363d",
                 rowAlternate: "#161b22",
-                link: "#58a6ff",
-                syntaxText: "#e6edf3",
-                syntaxComment: "#8b949e",
-                syntaxKeyword: "#ff7b72",
-                syntaxString: "#a5d6ff",
-                syntaxNumber: "#79c0ff",
-                syntaxType: "#ffa657",
-                syntaxFunction: "#d2a8ff",
-                syntaxVariable: "#c9d1d9"
+                link: "#58a6ff"
             )
         case .sepia:
             return PreviewThemeColors(
@@ -921,15 +923,7 @@ private extension PreviewTheme {
                 codeBackground: "#efe5cc",
                 border: "#d4c4a1",
                 rowAlternate: "#f1e7d0",
-                link: "#0f5e9c",
-                syntaxText: "#3a2f22",
-                syntaxComment: "#8a7a63",
-                syntaxKeyword: "#9f2f26",
-                syntaxString: "#285f8f",
-                syntaxNumber: "#0f5e9c",
-                syntaxType: "#825a2c",
-                syntaxFunction: "#7a3f8f",
-                syntaxVariable: "#3a2f22"
+                link: "#0f5e9c"
             )
         }
     }
@@ -946,15 +940,7 @@ private extension PreviewTheme {
             codeBackground: "#161b22",
             border: "#30363d",
             rowAlternate: "#161b22",
-            link: "#58a6ff",
-            syntaxText: "#e6edf3",
-            syntaxComment: "#8b949e",
-            syntaxKeyword: "#ff7b72",
-            syntaxString: "#a5d6ff",
-            syntaxNumber: "#79c0ff",
-            syntaxType: "#ffa657",
-            syntaxFunction: "#d2a8ff",
-            syntaxVariable: "#c9d1d9"
+            link: "#58a6ff"
         )
 
         let darkVariables = CMarkGFMRenderer.cssVariables(darkColors)

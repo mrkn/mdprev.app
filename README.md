@@ -12,6 +12,8 @@
 - Auto-reload toggle
 - Adjustable base font size (`Cmd+=`, `Cmd+-`, `Cmd+0`)
 - Selectable preview themes (`View > Theme`: System, Light, Dark, Sepia)
+- highlight.js syntax highlighting for fenced code blocks
+- Selectable code highlight themes (`View > Code Theme`)
 - Recent files list in `File > Open Recent` (up to 10 entries)
 - Startup screen shows clickable recent files list
 

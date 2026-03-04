@@ -175,11 +175,28 @@ private struct MDPrevCommands: Commands {
                     .disabled(focusedModel == nil)
                 }
             }
+
+            Menu("Code Theme") {
+                ForEach(SyntaxHighlightTheme.allCases, id: \.self) { theme in
+                    Button(codeThemeMenuTitle(for: theme)) {
+                        focusedModel?.setSyntaxHighlightTheme(theme)
+                    }
+                    .disabled(focusedModel == nil)
+                }
+            }
         }
     }
 
     private func themeMenuTitle(for theme: PreviewTheme) -> String {
         if focusedModel?.previewTheme == theme {
+            return "✓ \(theme.displayName)"
+        }
+
+        return theme.displayName
+    }
+
+    private func codeThemeMenuTitle(for theme: SyntaxHighlightTheme) -> String {
+        if focusedModel?.syntaxHighlightTheme == theme {
             return "✓ \(theme.displayName)"
         }
 

@@ -26,6 +26,16 @@ final class AppModel: ObservableObject {
             reload()
         }
     }
+    @Published var syntaxHighlightTheme: SyntaxHighlightTheme {
+        didSet {
+            guard oldValue != syntaxHighlightTheme else {
+                return
+            }
+
+            userDefaults.set(syntaxHighlightTheme.rawValue, forKey: Self.syntaxThemeDefaultsKey)
+            reload()
+        }
+    }
     @Published var baseFontSize: Double {
         didSet {
             let clamped = Self.clampBaseFontSize(baseFontSize)
@@ -78,14 +88,19 @@ final class AppModel: ObservableObject {
         let initialPreviewTheme = PreviewTheme(
             storedValue: userDefaults.string(forKey: Self.previewThemeDefaultsKey)
         )
+        let initialSyntaxTheme = SyntaxHighlightTheme(
+            storedValue: userDefaults.string(forKey: Self.syntaxThemeDefaultsKey)
+        )
 
         self.previewTheme = initialPreviewTheme
+        self.syntaxHighlightTheme = initialSyntaxTheme
         self.baseFontSize = initialBaseFontSize
 
         self.renderedHTML = MarkdownRenderer.placeholderHTML(
             Self.noFileSelectedMessage,
             baseFontSize: initialBaseFontSize,
             theme: initialPreviewTheme,
+            syntaxTheme: initialSyntaxTheme,
             recentFiles: recentFilesStore.fileURLs
         )
 
@@ -139,6 +154,7 @@ final class AppModel: ObservableObject {
                 Self.noFileSelectedMessage,
                 baseFontSize: baseFontSize,
                 theme: previewTheme,
+                syntaxTheme: syntaxHighlightTheme,
                 recentFiles: recentFilesStore.fileURLs
             )
             lastReloadDate = nil
@@ -216,12 +232,17 @@ final class AppModel: ObservableObject {
         previewTheme = theme
     }
 
+    func setSyntaxHighlightTheme(_ theme: SyntaxHighlightTheme) {
+        syntaxHighlightTheme = theme
+    }
+
     func reload() {
         guard let fileURL = selectedFileURL else {
             renderedHTML = MarkdownRenderer.placeholderHTML(
                 Self.noFileSelectedMessage,
                 baseFontSize: baseFontSize,
                 theme: previewTheme,
+                syntaxTheme: syntaxHighlightTheme,
                 recentFiles: recentFilesStore.fileURLs
             )
             statusMessage = "No file selected."
@@ -234,7 +255,8 @@ final class AppModel: ObservableObject {
             renderedHTML = renderer.renderHTML(
                 markdown,
                 baseFontSize: baseFontSize,
-                theme: previewTheme
+                theme: previewTheme,
+                syntaxTheme: syntaxHighlightTheme
             )
             statusMessage = "Previewing \(fileURL.lastPathComponent)"
             lastReloadDate = Date()
@@ -242,7 +264,8 @@ final class AppModel: ObservableObject {
             renderedHTML = MarkdownRenderer.placeholderHTML(
                 "Failed to load file.",
                 baseFontSize: baseFontSize,
-                theme: previewTheme
+                theme: previewTheme,
+                syntaxTheme: syntaxHighlightTheme
             )
             statusMessage = "Could not read \(fileURL.lastPathComponent): \(error.localizedDescription)"
         }
@@ -284,6 +307,7 @@ final class AppModel: ObservableObject {
 
     private static let baseFontSizeDefaultsKey = "preview.baseFontSize"
     private static let previewThemeDefaultsKey = "preview.theme"
+    private static let syntaxThemeDefaultsKey = "preview.syntaxTheme"
     private static let noFileSelectedMessage = "Open a Markdown file to start previewing."
 
     private static func clampBaseFontSize(_ value: Double) -> Double {

@@ -9,6 +9,7 @@ final class AppModelThemeTests: XCTestCase {
         let model = makeModel(defaults: defaults, suffix: "default")
 
         XCTAssertEqual(model.previewTheme, .system)
+        XCTAssertEqual(model.syntaxHighlightTheme, .followPreview)
         XCTAssertTrue(model.renderedHTML.contains("color-scheme: light dark;"))
     }
 
@@ -21,6 +22,17 @@ final class AppModelThemeTests: XCTestCase {
         let reloaded = makeModel(defaults: defaults, suffix: "persist")
         XCTAssertEqual(reloaded.previewTheme, .sepia)
         XCTAssertTrue(reloaded.renderedHTML.contains("--bg: #f7f0dd;"))
+    }
+
+    func testSyntaxThemePersistsAcrossModelRecreation() {
+        let defaults = makeIsolatedDefaults()
+        let model = makeModel(defaults: defaults, suffix: "syntax")
+
+        model.setSyntaxHighlightTheme(.atomOneDark)
+
+        let reloaded = makeModel(defaults: defaults, suffix: "syntax")
+        XCTAssertEqual(reloaded.syntaxHighlightTheme, .atomOneDark)
+        XCTAssertTrue(reloaded.renderedHTML.contains("mdprev-hljs-theme:atom-one-dark"))
     }
 
     private func makeModel(defaults: UserDefaults, suffix: String) -> AppModel {

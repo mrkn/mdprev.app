@@ -162,6 +162,44 @@ final class MarkdownRendererTests: XCTestCase {
         XCTAssertTrue(output.contains("Highlight.js v11.11.1"))
     }
 
+    func testRendererUsesConfiguredSyntaxThemeCSS() {
+        let renderer = MarkdownRenderer()
+        let markdown = """
+        ```swift
+        let a = 1
+        ```
+        """
+
+        let output = renderer.renderHTML(
+            markdown,
+            baseFontSize: 16,
+            theme: .light,
+            syntaxTheme: .atomOneDark
+        )
+
+        XCTAssertTrue(output.contains("mdprev-hljs-theme:atom-one-dark"))
+        XCTAssertFalse(output.contains("mdprev-hljs-theme:github-dark"))
+    }
+
+    func testRendererFollowPreviewSyntaxThemeUsesDarkCSSForDarkPreview() {
+        let renderer = MarkdownRenderer()
+        let markdown = """
+        ```swift
+        let a = 1
+        ```
+        """
+
+        let output = renderer.renderHTML(
+            markdown,
+            baseFontSize: 16,
+            theme: .dark,
+            syntaxTheme: .followPreview
+        )
+
+        XCTAssertTrue(output.contains("mdprev-hljs-theme:github-dark"))
+        XCTAssertFalse(output.contains("mdprev-hljs-theme:github */"))
+    }
+
     func testRendererDoesNotInsertNewlineTextNodesBetweenCodeLines() {
         let renderer = MarkdownRenderer()
         let markdown = """

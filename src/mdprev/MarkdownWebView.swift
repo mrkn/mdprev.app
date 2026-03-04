@@ -7,7 +7,7 @@ struct MarkdownWebView: NSViewRepresentable {
     let baseURL: URL?
     let selectAllRequestID: UInt
     let onFileDrop: (URL) -> Void
-    let onLocalFileLinkActivated: (URL) -> Void
+    let onLocalFileLinkActivated: (URL, LinkOpenDisposition) -> Void
     let onExternalURLActivated: (URL) -> Void
     @Binding var isDropTargeted: Bool
 
@@ -224,10 +224,11 @@ struct MarkdownWebView: NSViewRepresentable {
                 decisionHandler(.allow)
                 return
             }
+            let disposition = LinkOpenDisposition.from(modifierFlags: navigationAction.modifierFlags)
 
             if let fileURL = Self.localFileURLFromActivatedLink(url) {
                 Task { @MainActor in
-                    parent.onLocalFileLinkActivated(fileURL)
+                    parent.onLocalFileLinkActivated(fileURL, disposition)
                 }
                 decisionHandler(.cancel)
                 return

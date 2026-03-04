@@ -3,16 +3,16 @@ import XCTest
 @testable import mdprev
 
 final class LocalFileLinkResolverTests: XCTestCase {
-    func testResolveMarkdownFileAsOpenInNewWindow() throws {
+    func testResolveMarkdownFileAsOpenMarkdown() throws {
         let fileURL = try makeTempFile(name: "guide.md")
 
         let action = LocalFileLinkResolver.resolve(fileURL)
 
         switch action {
-        case .openMarkdownInNewWindow(let url):
+        case .openMarkdown(let url):
             XCTAssertEqual(url.lastPathComponent, "guide.md")
         default:
-            XCTFail("Expected markdown file to open in new window")
+            XCTFail("Expected markdown file to resolve as openMarkdown")
         }
     }
 
@@ -22,7 +22,7 @@ final class LocalFileLinkResolverTests: XCTestCase {
         let action = LocalFileLinkResolver.resolve(fileURL)
 
         switch action {
-        case .openMarkdownInNewWindow:
+        case .openMarkdown:
             XCTAssertTrue(true)
         default:
             XCTFail("Expected case-insensitive markdown extension handling")

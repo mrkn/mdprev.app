@@ -18,8 +18,19 @@ struct ContentView: View {
                 onFileDrop: { fileURL in
                     model.openFile(fileURL)
                 },
-                onLocalFileLinkActivated: { fileURL in
-                    model.handleActivatedLocalFileLink(fileURL) { markdownURL in
+                onLocalFileLinkActivated: { fileURL, disposition in
+                    model.handleActivatedLocalFileLink(
+                        fileURL,
+                        disposition: disposition,
+                        openMarkdownInNewTab: { markdownURL in
+                            if let sourceWindow = NSApp.keyWindow ?? NSApp.mainWindow {
+                                WindowTabbingCoordinator.shared.requestTab(from: sourceWindow)
+                            }
+
+                            let sourceWindowFrame = model.windowFrame ?? NSApp.keyWindow?.frame ?? NSApp.mainWindow?.frame
+                            openWindow(value: PreviewWindowPayload(fileURL: markdownURL, sourceWindowFrame: sourceWindowFrame))
+                        }
+                    ) { markdownURL in
                         let sourceWindowFrame = model.windowFrame ?? NSApp.keyWindow?.frame ?? NSApp.mainWindow?.frame
                         openWindow(value: PreviewWindowPayload(fileURL: markdownURL, sourceWindowFrame: sourceWindowFrame))
                     }

@@ -1,7 +1,7 @@
 import Foundation
 
 enum LocalFileLinkAction: Equatable {
-    case openMarkdownInNewWindow(URL)
+    case openMarkdown(URL)
     case revealParentDirectory(URL)
     case missingFile(URL)
 }
@@ -16,7 +16,7 @@ enum LocalFileLinkResolver {
 
         let ext = normalizedURL.pathExtension.lowercased()
         if ext == "md" || ext == "markdown" {
-            return .openMarkdownInNewWindow(normalizedURL)
+            return .openMarkdown(normalizedURL)
         }
 
         return .revealParentDirectory(normalizedURL.deletingLastPathComponent())

@@ -166,11 +166,20 @@ final class AppModel: ObservableObject {
 
     func handleActivatedLocalFileLink(
         _ fileURL: URL,
+        disposition: LinkOpenDisposition,
+        openMarkdownInNewTab: (URL) -> Void,
         openMarkdownInNewWindow: (URL) -> Void
     ) {
         switch LocalFileLinkResolver.resolve(fileURL) {
-        case .openMarkdownInNewWindow(let markdownURL):
-            openMarkdownInNewWindow(markdownURL)
+        case .openMarkdown(let markdownURL):
+            switch disposition {
+            case .currentTab:
+                openFile(markdownURL)
+            case .newTab:
+                openMarkdownInNewTab(markdownURL)
+            case .newWindow:
+                openMarkdownInNewWindow(markdownURL)
+            }
 
         case .revealParentDirectory(let directoryURL):
             statusMessage = "Opened folder for \(fileURL.lastPathComponent)"

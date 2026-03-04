@@ -41,3 +41,22 @@
 ### 期待結果
 - `A.md` を表示していた元ウィンドウはそのまま残る。
 - 新しいウィンドウが作成され、そのウィンドウで `B.md` が開く。
+
+## Local Link Fallback: Non-Markdown File
+
+### 目的
+- Markdown 内の非 Markdown ローカルリンクをクリックしたとき、対象ファイルそのものではなく親フォルダが Finder で開くことを確認する。
+
+### 前提
+- テスト用フォルダに以下を用意する:
+  - `index.md`
+  - `assets/spec.pdf`（任意の非 Markdown ファイル）
+- `index.md` に `[spec](./assets/spec.pdf)` のリンクを記述する。
+
+### 手順
+1. `index.md` を mdprev で開く。
+2. 本文中の `spec` リンクをクリックする。
+
+### 期待結果
+- `assets/spec.pdf` の親フォルダ（`assets/`）が Finder で開く。
+- mdprev 側はクラッシュせず、ステータスバーにフォルダを開いた旨が表示される。

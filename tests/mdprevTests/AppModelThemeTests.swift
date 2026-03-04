@@ -35,6 +35,18 @@ final class AppModelThemeTests: XCTestCase {
         XCTAssertTrue(reloaded.renderedHTML.contains("mdprev-hljs-theme:atom-one-dark"))
     }
 
+    func testDisabledSyntaxHighlightPersistsAcrossModelRecreation() {
+        let defaults = makeIsolatedDefaults()
+        let model = makeModel(defaults: defaults, suffix: "syntax-disabled")
+
+        model.setSyntaxHighlightTheme(.disabled)
+
+        let reloaded = makeModel(defaults: defaults, suffix: "syntax-disabled")
+        XCTAssertEqual(reloaded.syntaxHighlightTheme, .disabled)
+        XCTAssertFalse(reloaded.renderedHTML.contains("window.hljs"))
+        XCTAssertFalse(reloaded.renderedHTML.contains("mdprev-hljs-theme:"))
+    }
+
     private func makeModel(defaults: UserDefaults, suffix: String) -> AppModel {
         let store = RecentFilesStore(
             userDefaults: defaults,

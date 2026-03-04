@@ -3,7 +3,11 @@ import Foundation
 enum HighlightJSSupport {
     static let bootstrapMarker = "mdprev-highlight-bootstrap-v1"
 
-    static var inlineScriptTagsHTML: String {
+    static func inlineScriptTagsHTML(for theme: SyntaxHighlightTheme) -> String {
+        guard !theme.isDisabled else {
+            return ""
+        }
+
         var scripts: [String] = []
 
         if !inlineLibraryScript.isEmpty {
@@ -18,35 +22,31 @@ enum HighlightJSSupport {
         for theme: SyntaxHighlightTheme,
         previewTheme: PreviewTheme
     ) -> String {
-        switch theme {
-        case .followPreview:
-            return followPreviewThemeCSS(previewTheme)
-
-        case .github:
-            return singleThemeCSS(asset: .github)
-
-        case .githubDark:
-            return singleThemeCSS(asset: .githubDark)
-
-        case .atomOneDark:
-            return singleThemeCSS(asset: .atomOneDark)
-
-        case .xcode:
-            return singleThemeCSS(asset: .xcode)
+        if theme.isDisabled {
+            return ""
         }
+
+        if theme.isFollowPreview {
+            return followPreviewThemeCSS(previewTheme)
+        }
+
+        return singleThemeCSS(themeIdentifier: theme.rawValue)
     }
 
     private static func followPreviewThemeCSS(_ previewTheme: PreviewTheme) -> String {
+        let lightIdentifier = HighlightJSThemeCatalog.resolvedFollowPreviewLightIdentifier
+        let darkIdentifier = HighlightJSThemeCatalog.resolvedFollowPreviewDarkIdentifier
+
         switch previewTheme {
         case .dark:
-            return singleThemeCSS(asset: .githubDark)
+            return singleThemeCSS(themeIdentifier: darkIdentifier)
 
         case .light, .sepia:
-            return singleThemeCSS(asset: .github)
+            return singleThemeCSS(themeIdentifier: lightIdentifier)
 
         case .system:
-            let lightCSS = themedCSS(asset: .github)
-            let darkCSS = themedCSS(asset: .githubDark)
+            let lightCSS = themedCSS(themeIdentifier: lightIdentifier)
+            let darkCSS = themedCSS(themeIdentifier: darkIdentifier)
 
             return """
                   \(lightCSS)
@@ -54,27 +54,21 @@ enum HighlightJSSupport {
                   @media (prefers-color-scheme: dark) {
                   \(indented(darkCSS, spaces: 2))
                   }
-
-                  \(lineLevelOverridesCSS)
             """
         }
     }
 
-    private static func singleThemeCSS(asset: HighlightJSThemeAsset) -> String {
-        """
-              \(themedCSS(asset: asset))
-
-              \(lineLevelOverridesCSS)
-        """
+    private static func singleThemeCSS(themeIdentifier: String) -> String {
+        themedCSS(themeIdentifier: themeIdentifier)
     }
 
-    private static func themedCSS(asset: HighlightJSThemeAsset) -> String {
-        guard let css = themeCSSByAsset[asset] else {
-            return "/* mdprev-hljs-theme:\(asset.marker)-missing */"
+    private static func themedCSS(themeIdentifier: String) -> String {
+        guard let css = HighlightJSThemeCatalog.css(for: themeIdentifier) else {
+            return "/* mdprev-hljs-theme:\(themeIdentifier)-missing */"
         }
 
         return """
-              /* mdprev-hljs-theme:\(asset.marker) */
+              /* mdprev-hljs-theme:\(themeIdentifier) */
               \(css)
         """
     }
@@ -86,21 +80,6 @@ enum HighlightJSSupport {
             .map { prefix + $0 }
             .joined(separator: "\n")
     }
-
-    private static let lineLevelOverridesCSS = """
-              .mdprev-code-line-text.hljs {
-                display: block;
-                background: transparent !important;
-                padding: 0 !important;
-              }
-        """
-
-    private static let themeCSSByAsset: [HighlightJSThemeAsset: String] = [
-        .github: loadInlineStyle(resource: "github.min", subdirectory: "highlightjs/styles"),
-        .githubDark: loadInlineStyle(resource: "github-dark.min", subdirectory: "highlightjs/styles"),
-        .atomOneDark: loadInlineStyle(resource: "atom-one-dark.min", subdirectory: "highlightjs/styles"),
-        .xcode: loadInlineStyle(resource: "xcode.min", subdirectory: "highlightjs/styles")
-    ]
 
     private static let inlineLibraryScript = loadInlineScript(
         resource: "highlight.min",
@@ -148,11 +127,15 @@ enum HighlightJSSupport {
             continue;
           }
 
+          codeElement.classList.add('hljs');
+
           const language = resolveLanguage(container, codeElement);
           if (!language) {
             codeElement.dataset.mdprevHighlighted = 'true';
             continue;
           }
+
+          codeElement.classList.add(`language-${language}`);
 
           const lineElements = codeElement.querySelectorAll('.mdprev-code-line-text');
           for (const lineElement of lineElements) {
@@ -165,8 +148,6 @@ enum HighlightJSSupport {
             } catch (_error) {
               lineElement.textContent = source;
             }
-            lineElement.classList.add('hljs');
-            lineElement.classList.add(`language-${language}`);
           }
 
           codeElement.dataset.mdprevHighlighted = 'true';
@@ -193,10 +174,6 @@ enum HighlightJSSupport {
         return inlineScript(source)
     }
 
-    private static func loadInlineStyle(resource: String, subdirectory: String?) -> String {
-        loadResource(resource: resource, fileExtension: "css", subdirectory: subdirectory) ?? ""
-    }
-
     private static func loadResource(resource: String, fileExtension: String, subdirectory: String?) -> String? {
 #if SWIFT_PACKAGE
         let bundle = Bundle.module
@@ -220,25 +197,5 @@ enum HighlightJSSupport {
 
     private static func inlineScript(_ source: String) -> String {
         source.replacingOccurrences(of: "</script>", with: "<\\/script>")
-    }
-}
-
-private enum HighlightJSThemeAsset: Hashable {
-    case github
-    case githubDark
-    case atomOneDark
-    case xcode
-
-    var marker: String {
-        switch self {
-        case .github:
-            return "github"
-        case .githubDark:
-            return "github-dark"
-        case .atomOneDark:
-            return "atom-one-dark"
-        case .xcode:
-            return "xcode"
-        }
     }
 }

@@ -328,6 +328,12 @@ struct CMarkGFMRenderer: MarkdownRenderingEngine {
 
               \(syntaxThemeCSS)
 
+              pre.mdprev-codeblock code.hljs {
+                display: block;
+                padding: 12px 0;
+                overflow-x: visible;
+              }
+
               code {
                 background: var(--code-bg);
                 border-radius: 4px;
@@ -407,7 +413,7 @@ struct CMarkGFMRenderer: MarkdownRenderingEngine {
           </head>
           <body>
           \(htmlBody)
-          \(HighlightJSSupport.inlineScriptTagsHTML)
+          \(HighlightJSSupport.inlineScriptTagsHTML(for: syntaxTheme))
           </body>
         </html>
         """

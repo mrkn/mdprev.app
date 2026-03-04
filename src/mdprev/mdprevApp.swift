@@ -181,13 +181,41 @@ private struct MDPrevCommands: Commands {
                 }
             }
 
-            Menu("Code Theme") {
-                ForEach(SyntaxHighlightTheme.allCases, id: \.self) { theme in
-                    Button(codeThemeMenuTitle(for: theme)) {
-                        focusedModel?.setSyntaxHighlightTheme(theme)
-                    }
-                    .disabled(focusedModel == nil)
+            Menu("Syntax Highlight") {
+                Button(syntaxHighlightDisabledMenuTitle()) {
+                    focusedModel?.setSyntaxHighlightTheme(.disabled)
                 }
+                .disabled(focusedModel == nil)
+
+                Button(syntaxHighlightFollowThemeMenuTitle()) {
+                    focusedModel?.setSyntaxHighlightTheme(.followPreview)
+                }
+                .disabled(focusedModel == nil)
+
+                Menu("Color Theme") {
+                    ForEach(syntaxHighlightThemeSections(), id: \.letter) { section in
+                        Menu(section.letter) {
+                            ForEach(section.base16Subsections, id: \.letter) { subsection in
+                                Menu("Base16 / \(subsection.letter)") {
+                                    ForEach(subsection.themes, id: \.self) { theme in
+                                        Button(codeThemeMenuTitle(for: theme)) {
+                                            focusedModel?.setSyntaxHighlightTheme(theme)
+                                        }
+                                        .disabled(focusedModel == nil)
+                                    }
+                                }
+                            }
+
+                            ForEach(section.standaloneThemes, id: \.self) { theme in
+                                Button(codeThemeMenuTitle(for: theme)) {
+                                    focusedModel?.setSyntaxHighlightTheme(theme)
+                                }
+                                .disabled(focusedModel == nil)
+                            }
+                        }
+                    }
+                }
+                .disabled(focusedModel == nil)
             }
         }
     }
@@ -206,6 +234,102 @@ private struct MDPrevCommands: Commands {
         }
 
         return theme.displayName
+    }
+
+    private func syntaxHighlightDisabledMenuTitle() -> String {
+        if focusedModel?.syntaxHighlightTheme.isDisabled == true {
+            return "✓ Disabled"
+        }
+
+        return "Disabled"
+    }
+
+    private func syntaxHighlightFollowThemeMenuTitle() -> String {
+        if focusedModel?.syntaxHighlightTheme.isFollowPreview == true {
+            return "✓ Follow Theme"
+        }
+
+        return "Follow Theme"
+    }
+
+    private func syntaxHighlightThemeSections() -> [SyntaxHighlightThemeSection] {
+        let themes = SyntaxHighlightTheme.allCases
+            .filter { !$0.isDisabled && !$0.isFollowPreview }
+            .sorted { lhs, rhs in
+                lhs.displayName.localizedCaseInsensitiveCompare(rhs.displayName) == .orderedAscending
+            }
+
+        let grouped = Dictionary(grouping: themes) { theme in
+            firstLetter(for: theme.displayName)
+        }
+
+        return grouped
+            .map { entry in
+                makeSyntaxHighlightThemeSection(
+                    letter: entry.key,
+                    themes: entry.value
+                )
+            }
+            .sorted { lhs, rhs in
+                lhs.letter.localizedCaseInsensitiveCompare(rhs.letter) == .orderedAscending
+            }
+    }
+
+    private func makeSyntaxHighlightThemeSection(
+        letter: String,
+        themes: [SyntaxHighlightTheme]
+    ) -> SyntaxHighlightThemeSection {
+        let base16Themes = themes
+            .filter { $0.rawValue.hasPrefix("base16/") }
+            .sorted { lhs, rhs in
+                lhs.displayName.localizedCaseInsensitiveCompare(rhs.displayName) == .orderedAscending
+            }
+
+        let standaloneThemes = themes
+            .filter { !$0.rawValue.hasPrefix("base16/") }
+            .sorted { lhs, rhs in
+                lhs.displayName.localizedCaseInsensitiveCompare(rhs.displayName) == .orderedAscending
+            }
+
+        let base16Grouped = Dictionary(grouping: base16Themes) { theme in
+            base16ThemeGroupLetter(for: theme)
+        }
+
+        let base16Subsections = base16Grouped
+            .map { entry in
+                Base16ThemeSubsection(
+                    letter: entry.key,
+                    themes: entry.value.sorted { lhs, rhs in
+                        lhs.displayName.localizedCaseInsensitiveCompare(rhs.displayName) == .orderedAscending
+                    }
+                )
+            }
+            .sorted { lhs, rhs in
+                lhs.letter.localizedCaseInsensitiveCompare(rhs.letter) == .orderedAscending
+            }
+
+        return SyntaxHighlightThemeSection(
+            letter: letter,
+            base16Subsections: base16Subsections,
+            standaloneThemes: standaloneThemes
+        )
+    }
+
+    private func base16ThemeGroupLetter(for theme: SyntaxHighlightTheme) -> String {
+        guard theme.rawValue.hasPrefix("base16/") else {
+            return "#"
+        }
+
+        let suffix = String(theme.rawValue.dropFirst("base16/".count))
+        return firstLetter(for: suffix)
+    }
+
+    private func firstLetter(for title: String) -> String {
+        guard let first = title.first else {
+            return "#"
+        }
+
+        return String(first).uppercased()
     }
 
     private func openRecentFile(_ fileURL: URL) {
@@ -240,6 +364,17 @@ private struct MDPrevCommands: Commands {
             WindowTabbingCoordinator.shared.requestTab(from: sourceWindow)
         }
         openEmptyWindow()
+    }
+
+    private struct SyntaxHighlightThemeSection {
+        let letter: String
+        let base16Subsections: [Base16ThemeSubsection]
+        let standaloneThemes: [SyntaxHighlightTheme]
+    }
+
+    private struct Base16ThemeSubsection {
+        let letter: String
+        let themes: [SyntaxHighlightTheme]
     }
 }
 

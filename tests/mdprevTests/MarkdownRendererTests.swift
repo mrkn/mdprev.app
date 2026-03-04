@@ -162,6 +162,41 @@ final class MarkdownRendererTests: XCTestCase {
         XCTAssertTrue(output.contains("Highlight.js v11.11.1"))
     }
 
+    func testRendererAppliesHighlightThemeClassToCodeElement() {
+        let renderer = MarkdownRenderer()
+        let markdown = """
+        ```swift
+        let a = 1
+        ```
+        """
+
+        let output = renderer.renderHTML(markdown)
+
+        XCTAssertTrue(output.contains("codeElement.classList.add('hljs');"))
+        XCTAssertTrue(output.contains("pre.mdprev-codeblock code.hljs {"))
+        XCTAssertFalse(output.contains(".mdprev-code-line-text.hljs"))
+    }
+
+    func testRendererDisablesSyntaxHighlightWhenDisabledThemeIsSelected() {
+        let renderer = MarkdownRenderer()
+        let markdown = """
+        ```swift
+        let a = 1
+        ```
+        """
+
+        let output = renderer.renderHTML(
+            markdown,
+            baseFontSize: 16,
+            theme: .light,
+            syntaxTheme: .disabled
+        )
+
+        XCTAssertFalse(output.contains(HighlightJSSupport.bootstrapMarker))
+        XCTAssertFalse(output.contains("window.hljs"))
+        XCTAssertFalse(output.contains("mdprev-hljs-theme:"))
+    }
+
     func testRendererUsesConfiguredSyntaxThemeCSS() {
         let renderer = MarkdownRenderer()
         let markdown = """

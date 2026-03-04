@@ -221,6 +221,19 @@ final class AppModel: ObservableObject {
         attachedWindow?.frame
     }
 
+    var isPreferredAppOpenFileConsumer: Bool {
+        let visibleWindowNumbers = NSApp.windows
+            .filter { $0.isVisible && !$0.isMiniaturized }
+            .map(\.windowNumber)
+
+        return AppOpenFileConsumerSelector.isPreferred(
+            candidateWindowNumber: attachedWindow?.windowNumber,
+            keyWindowNumber: NSApp.keyWindow?.windowNumber,
+            mainWindowNumber: NSApp.mainWindow?.windowNumber,
+            orderedWindowNumbers: visibleWindowNumbers
+        )
+    }
+
     func requestSelectAll() {
         selectAllRequestID &+= 1
     }

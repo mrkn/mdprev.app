@@ -43,6 +43,7 @@ struct PreviewWindowPayload: Hashable, Codable {
 
 private struct PreviewWindowRootView: View {
     @StateObject private var model: AppModel
+    @Environment(\.openWindow) private var openWindow
 
     init(initialFileURL: URL?, initialWindowOrigin: CGPoint?, recentFilesStore: RecentFilesStore) {
         _model = StateObject(
@@ -66,20 +67,37 @@ private struct PreviewWindowRootView: View {
                 model.openFile(url.standardizedFileURL)
             }
             .task {
-                consumePendingOpenFileIfNeeded()
+                consumePendingOpenFileIfNeeded(requirePreferredConsumer: true)
             }
             .onReceive(AppOpenFileQueue.shared.publisher) { _ in
-                consumePendingOpenFileIfNeeded()
+                consumePendingOpenFileIfNeeded(requirePreferredConsumer: true)
+            }
+            .onReceive(NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification)) { _ in
+                consumePendingOpenFileIfNeeded(requirePreferredConsumer: true)
             }
     }
 
     @MainActor
-    private func consumePendingOpenFileIfNeeded() {
-        guard let fileURL = AppOpenFileQueue.shared.dequeueNext() else {
+    private func consumePendingOpenFileIfNeeded(requirePreferredConsumer: Bool) {
+        if requirePreferredConsumer && !model.isPreferredAppOpenFileConsumer {
             return
         }
 
-        model.openFile(fileURL)
+        let fileURLs = AppOpenFileQueue.shared.dequeueAll()
+        guard !fileURLs.isEmpty else {
+            return
+        }
+
+        model.openFile(fileURLs[0])
+
+        guard fileURLs.count > 1 else {
+            return
+        }
+
+        let sourceWindowFrame = model.windowFrame ?? NSApp.keyWindow?.frame ?? NSApp.mainWindow?.frame
+        for fileURL in fileURLs.dropFirst() {
+            openWindow(value: PreviewWindowPayload(fileURL: fileURL, sourceWindowFrame: sourceWindowFrame))
+        }
     }
 }
 
@@ -443,11 +461,13 @@ private final class AppOpenFileQueue {
         eventSubject.send()
     }
 
-    func dequeueNext() -> URL? {
+    func dequeueAll() -> [URL] {
         guard !queue.isEmpty else {
-            return nil
+            return []
         }
 
-        return queue.removeFirst()
+        let queued = queue
+        queue.removeAll(keepingCapacity: true)
+        return queued
     }
 }

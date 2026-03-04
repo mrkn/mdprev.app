@@ -64,11 +64,10 @@
     - `FileOpenService` / `ExternalURLService` / `KeyboardShortcutService` を導入。
     - `AppModel` からファイル選択/読込、外部 URL 確認、キーボード監視を分離し、依存注入可能にした。
 
-- [ ] P3: `MarkdownRenderer` の code fence 情報解析を分離する
-  - 問題:
-    - HTML テンプレート構築と metadata 解析が 1 ファイルに集中し変更影響が大きい。
-  - 期待:
-    - `CodeFenceMetadataParser` を独立させ、仕様追加時の回帰範囲を小さくする。
+- [x] P3: `MarkdownRenderer` の code fence 情報解析を分離する
+  - 対応済み:
+    - `CodeFenceMetadataParser` を独立型として抽出し、`MarkdownRenderer` から解析責務を分離。
+    - parser 専用ユニットテストを追加し、代表的な info string バリエーションを直接検証できるようにした。
 
 ## テスト TODO
 - [ ] キーボードモニタ解除の回帰テスト戦略を追加する（少なくとも手動再現手順を `README` か `docs` に記載）。

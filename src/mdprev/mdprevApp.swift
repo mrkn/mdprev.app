@@ -333,20 +333,18 @@ private struct MDPrevCommands: Commands {
     }
 
     private func openRecentFile(_ fileURL: URL) {
-        if let focusedModel {
-            focusedModel.openRecentFile(fileURL)
-            if NSEvent.modifierFlags.contains(.option) {
-                openEmptyWindow()
-            }
-            return
-        }
+        let action = RecentFileOpenAction.from(
+            modifierFlags: NSEvent.modifierFlags,
+            hasFocusedModel: focusedModel != nil
+        )
 
-        if NSEvent.modifierFlags.contains(.option) {
-            openEmptyWindow()
-            return
-        }
+        switch action {
+        case .openInFocusedWindow:
+            focusedModel?.openRecentFile(fileURL)
 
-        openFileInNewWindow(fileURL)
+        case .openInNewWindow:
+            openFileInNewWindow(fileURL)
+        }
     }
 
     private func openEmptyWindow() {

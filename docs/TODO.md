@@ -85,4 +85,6 @@
 - [x] 非 Markdown のローカルリンク選択時に Finder が開くフォールバックの手動検証手順を追加する。
   - 対応済み:
     - `docs/manual_test_procedures.md` に `Local Link Fallback: Non-Markdown File` を追加。
-- [ ] 外部 URL リンクの「確認ダイアログ + HEAD リダイレクト警告」の手動検証手順を追加する。
+- [x] 外部 URL リンクの「確認ダイアログ + HEAD リダイレクト警告」の手動検証手順を追加する。
+  - 対応済み:
+    - `docs/manual_test_procedures.md` に `External URL Confirmation and Redirect Warning` を追加。

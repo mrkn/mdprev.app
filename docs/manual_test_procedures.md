@@ -23,3 +23,21 @@
 - `swift run` 出力に `IMKCFRunLoopWakeUpReliable` が出ない。
 - `Command + A` で Markdown 本文全体が選択される。
 - ウィンドウ増減後も `Command + A` の挙動が変化しない。
+
+## Open Recent: Option + Click
+
+### 目的
+- `Open Recent` の `Option + クリック` が、常に新規ウィンドウでファイルを開くことを確認する。
+
+### 前提
+- `Open Recent` に少なくとも 2 件の Markdown ファイルが登録されている。
+
+### 手順
+1. `Open Markdown...` で `A.md` を開く。
+2. `Open Markdown...` で `B.md` を開く（Recent を更新する）。
+3. `A.md` を表示したウィンドウをアクティブにする。
+4. `File > Open Recent` を開き、`Option` を押しながら `B.md` をクリックする。
+
+### 期待結果
+- `A.md` を表示していた元ウィンドウはそのまま残る。
+- 新しいウィンドウが作成され、そのウィンドウで `B.md` が開く。

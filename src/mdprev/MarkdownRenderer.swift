@@ -636,7 +636,11 @@ struct CMarkGFMRenderer: MarkdownRenderingEngine {
                 continue
             }
 
-            if language != nil || looksLikeFileName(token) {
+            if isCodeFenceControlToken(token) {
+                continue
+            }
+
+            if looksLikeFileName(token) || isQuotedInfoToken(token) {
                 fileName = normalizeInfoToken(token)
             }
         }
@@ -757,8 +761,46 @@ struct CMarkGFMRenderer: MarkdownRenderingEngine {
         return trimmed
     }
 
+    private static func isQuotedInfoToken(_ token: String) -> Bool {
+        let trimmed = token.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmed.count >= 2 else {
+            return false
+        }
+
+        return (trimmed.hasPrefix("\"") && trimmed.hasSuffix("\"")) ||
+            (trimmed.hasPrefix("'") && trimmed.hasSuffix("'"))
+    }
+
     private static func isFileNameKey(_ key: String) -> Bool {
         ["file", "filename", "title", "path", "name"].contains(key)
+    }
+
+    private static func isCodeFenceControlToken(_ token: String) -> Bool {
+        let normalized = normalizeInfoToken(token)
+        let lowercased = normalized.lowercased()
+
+        if lowercased == "showlinenumbers" || lowercased == "linenumbers" || lowercased == "linenos" {
+            return true
+        }
+
+        if lowercased.hasPrefix("showlinenumbers=") ||
+            lowercased.hasPrefix("linenumbers=") ||
+            lowercased.hasPrefix("linenos=") {
+            return true
+        }
+
+        guard normalized.hasPrefix("{"), normalized.hasSuffix("}") else {
+            return false
+        }
+
+        let body = normalized.dropFirst().dropLast()
+        guard !body.isEmpty else {
+            return false
+        }
+
+        return body.allSatisfy { char in
+            char.isNumber || char == "," || char == "-" || char == " "
+        }
     }
 
     private static func looksLikeFileName(_ token: String) -> Bool {

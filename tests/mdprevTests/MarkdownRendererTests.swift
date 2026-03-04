@@ -103,6 +103,34 @@ final class MarkdownRendererTests: XCTestCase {
         XCTAssertTrue(output.contains("class=\"mdprev-codeblock-filename\">src/main.py</span>"))
     }
 
+    func testRendererSupportsDocusaurusStyleTitleMetadata() {
+        let renderer = MarkdownRenderer()
+        let markdown = """
+        ```tsx {1,3-4} showLineNumbers title=\"/src/App.tsx\"
+        console.log("hi")
+        ```
+        """
+
+        let output = renderer.renderHTML(markdown)
+
+        XCTAssertTrue(output.contains("class=\"mdprev-codeblock-language\">tsx</span>"))
+        XCTAssertTrue(output.contains("class=\"mdprev-codeblock-filename\">/src/App.tsx</span>"))
+    }
+
+    func testRendererDoesNotTreatLineHighlightMetadataAsFileName() {
+        let renderer = MarkdownRenderer()
+        let markdown = """
+        ```swift {2}
+        let x = 1
+        ```
+        """
+
+        let output = renderer.renderHTML(markdown)
+
+        XCTAssertTrue(output.contains("class=\"mdprev-codeblock-language\">swift</span>"))
+        XCTAssertFalse(output.contains("class=\"mdprev-codeblock-filename\">{2}</span>"))
+    }
+
     func testRendererUsesNonSelectableLineNumbers() {
         let renderer = MarkdownRenderer()
         let markdown = """

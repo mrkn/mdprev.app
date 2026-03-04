@@ -135,7 +135,7 @@ private struct MDPrevCommands: Commands {
             .disabled(focusedModel == nil)
         }
 
-        CommandMenu("View") {
+        CommandGroup(after: .toolbar) {
             Button("Make Text Bigger") {
                 focusedModel?.increaseBaseFontSize()
             }

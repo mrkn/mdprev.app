@@ -59,7 +59,6 @@ final class AppModel: ObservableObject {
     private let externalURLService: any ExternalURLServicing
     private let userDefaults: UserDefaults
     private let recentFilesStore: RecentFilesStore
-    private let keyboardShortcutService: KeyboardShortcutService
     private var initialWindowOrigin: CGPoint?
     private var watcher: FileWatcher?
     private weak var attachedWindow: NSWindow?
@@ -73,7 +72,6 @@ final class AppModel: ObservableObject {
         externalURLService: any ExternalURLServicing = ExternalURLService(),
         userDefaults: UserDefaults = .standard,
         recentFilesStore: RecentFilesStore = RecentFilesStore(),
-        keyboardShortcutService: KeyboardShortcutService = KeyboardShortcutService(),
         initialFileURL: URL? = nil,
         initialWindowOrigin: CGPoint? = nil
     ) {
@@ -82,7 +80,6 @@ final class AppModel: ObservableObject {
         self.externalURLService = externalURLService
         self.userDefaults = userDefaults
         self.recentFilesStore = recentFilesStore
-        self.keyboardShortcutService = keyboardShortcutService
         self.initialWindowOrigin = initialWindowOrigin
 
         let initialBaseFontSize: Double
@@ -210,7 +207,6 @@ final class AppModel: ObservableObject {
         attachedWindow = window
         windowBehaviorController.attach(window: window, preferredInitialOrigin: initialWindowOrigin)
         initialWindowOrigin = nil
-        installKeyboardMonitorIfNeeded()
         observeWindowClose(for: window)
     }
 
@@ -320,20 +316,6 @@ final class AppModel: ObservableObject {
         min(max(value, baseFontSizeRange.lowerBound), baseFontSizeRange.upperBound)
     }
 
-    private func installKeyboardMonitorIfNeeded() {
-        guard let attachedWindow else {
-            return
-        }
-
-        keyboardShortcutService.attach(to: attachedWindow) { [weak self] in
-            self?.requestSelectAll()
-        }
-    }
-
-    private func removeKeyboardMonitor() {
-        keyboardShortcutService.detach()
-    }
-
     private func observeWindowClose(for window: NSWindow) {
         windowCloseObserver = NotificationCenter.default.addObserver(
             forName: NSWindow.willCloseNotification,
@@ -356,7 +338,6 @@ final class AppModel: ObservableObject {
     }
 
     private func handleWindowClosed() {
-        removeKeyboardMonitor()
         removeWindowCloseObserver()
         watcher?.stop()
         watcher = nil

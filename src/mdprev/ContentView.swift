@@ -15,6 +15,9 @@ struct ContentView: View {
                 html: model.renderedHTML,
                 baseURL: model.selectedFileURL?.deletingLastPathComponent(),
                 selectAllRequestID: model.selectAllRequestID,
+                onSelectAllShortcut: {
+                    model.requestSelectAll()
+                },
                 onFileDrop: { fileURL in
                     model.openFile(fileURL)
                 },

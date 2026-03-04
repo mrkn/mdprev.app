@@ -4,16 +4,11 @@
 `mdprev` の実装品質を上げるため、既知の改善項目と仕様確定事項を TODO 化する。
 
 ## 優先タスク
-- [ ] `NSEvent` ローカルモニタのライフサイクルを修正する
-  - 現状:
-    - ウィンドウクローズ時の `removeMonitor` は実装済み。
-    - ただし `IMKCFRunLoopWakeUpReliable` のログは再現し、入力処理まわりの課題が残っている。
-  - 対応:
-    - `Cmd+A` / `Cmd` / `Option` 入力時に IMK ログが出ないようにする。
-    - 複数ウィンドウの開閉を繰り返してもモニタが増殖しないことを確認する。
-  - 進捗:
-    - `KeyboardShortcutService` は `keyDown` の `Cmd+A` のみを監視し、`flagsChanged` 監視を廃止。
-    - 手動確認手順を `docs/manual_test_procedures.md` に追加（実機確認待ち）。
+- [x] `NSEvent` ローカルモニタのライフサイクルを修正する
+  - 対応済み:
+    - `NSEvent.addLocalMonitor` 依存を廃止し、`FileDropWebView.performKeyEquivalent` で `Cmd+A` を処理する方式に変更。
+    - `Cmd` / `Option` 単体入力に介入しないようにし、IMK ログ要因になり得る `flagsChanged` 監視を除去。
+    - 手動確認手順を `docs/manual_test_procedures.md` に記載。
 
 - [x] `RecentFilesStore` の読み込み時にも最大件数 (`10`) を強制する
   - 対応済み:
@@ -64,8 +59,8 @@
 
 - [x] P3: `AppModel` の責務を分割する
   - 対応済み:
-    - `FileOpenService` / `ExternalURLService` / `KeyboardShortcutService` を導入。
-    - `AppModel` からファイル選択/読込、外部 URL 確認、キーボード監視を分離し、依存注入可能にした。
+    - `FileOpenService` / `ExternalURLService` を導入。
+    - `AppModel` からファイル選択/読込、外部 URL 確認を分離し、依存注入可能にした。
 
 - [x] P3: `MarkdownRenderer` の code fence 情報解析を分離する
   - 対応済み:

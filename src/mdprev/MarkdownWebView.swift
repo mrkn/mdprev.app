@@ -6,6 +6,7 @@ struct MarkdownWebView: NSViewRepresentable {
     let html: String
     let baseURL: URL?
     let selectAllRequestID: UInt
+    let onSelectAllShortcut: () -> Void
     let onFileDrop: (URL) -> Void
     let onLocalFileLinkActivated: (URL, LinkOpenDisposition) -> Void
     let onExternalURLActivated: (URL) -> Void
@@ -31,6 +32,11 @@ struct MarkdownWebView: NSViewRepresentable {
         webView.allowsBackForwardNavigationGestures = false
         webView.allowsMagnification = false
         webView.underPageBackgroundColor = .clear
+        webView.onSelectAllShortcut = { [weak coordinator = context.coordinator] in
+            Task { @MainActor in
+                coordinator?.handleSelectAllShortcut()
+            }
+        }
         webView.onFileDrop = { [weak coordinator = context.coordinator] fileURL in
             Task { @MainActor in
                 coordinator?.handleDrop(fileURL)
@@ -214,6 +220,11 @@ struct MarkdownWebView: NSViewRepresentable {
             parent.isDropTargeted = targeted
         }
 
+        @MainActor
+        func handleSelectAllShortcut() {
+            parent.onSelectAllShortcut()
+        }
+
         func webView(
             _ webView: WKWebView,
             decidePolicyFor navigationAction: WKNavigationAction,
@@ -257,6 +268,7 @@ struct MarkdownWebView: NSViewRepresentable {
 }
 
 final class FileDropWebView: WKWebView {
+    var onSelectAllShortcut: (() -> Void)?
     var onFileDrop: ((URL) -> Void)?
     var onDragStateChange: ((Bool) -> Void)?
 
@@ -268,6 +280,16 @@ final class FileDropWebView: WKWebView {
     @available(*, unavailable)
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
+    }
+
+    override func performKeyEquivalent(with event: NSEvent) -> Bool {
+        let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+        if flags == [.command], event.charactersIgnoringModifiers?.lowercased() == "a" {
+            onSelectAllShortcut?()
+            return true
+        }
+
+        return super.performKeyEquivalent(with: event)
     }
 
     override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {

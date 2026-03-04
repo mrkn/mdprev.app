@@ -10,11 +10,7 @@ enum HighlightJSThemeCatalog {
     static let followPreviewDarkIdentifier = "github-dark"
 
     static var availableThemes: [HighlightJSThemeDefinition] {
-        themeEntries
-            .map(\.definition)
-            .sorted { lhs, rhs in
-                lhs.displayName.localizedCaseInsensitiveCompare(rhs.displayName) == .orderedAscending
-            }
+        themeDefinitions
     }
 
     static func contains(identifier: String) -> Bool {
@@ -26,7 +22,11 @@ enum HighlightJSThemeCatalog {
     }
 
     static func css(for identifier: String) -> String? {
-        themeEntriesByIdentifier[identifier]?.css
+        guard let fileURL = themeEntriesByIdentifier[identifier]?.fileURL else {
+            return nil
+        }
+
+        return cssCache.css(for: identifier, fileURL: fileURL)
     }
 
     static var resolvedFollowPreviewLightIdentifier: String {
@@ -37,11 +37,14 @@ enum HighlightJSThemeCatalog {
         preferredIdentifier(primary: followPreviewDarkIdentifier, fallback: followPreviewLightIdentifier)
     }
 
-    private static var themeEntries: [ThemeEntry] {
-        Array(themeEntriesByIdentifier.values)
-    }
-
     private static let themeEntriesByIdentifier: [String: ThemeEntry] = loadThemeEntriesByIdentifier()
+    private static let themeDefinitions: [HighlightJSThemeDefinition] = themeEntriesByIdentifier
+        .values
+        .map(\.definition)
+        .sorted { lhs, rhs in
+            lhs.displayName.localizedCaseInsensitiveCompare(rhs.displayName) == .orderedAscending
+        }
+    private static let cssCache = ThemeCSSCache()
 
     private static func preferredIdentifier(primary: String, fallback: String) -> String {
         if contains(identifier: primary) {
@@ -75,13 +78,7 @@ enum HighlightJSThemeCatalog {
 
         var entriesByIdentifier: [String: ThemeEntry] = [:]
         for fileURL in candidateURLs {
-            guard let identifier = themeIdentifier(for: fileURL, stylesDirectoryURL: stylesDirectoryURL),
-                  let css = try? String(contentsOf: fileURL, encoding: .utf8) else {
-                continue
-            }
-
-            // Only treat highlight.js themes as candidates.
-            guard css.contains(".hljs") else {
+            guard let identifier = themeIdentifier(for: fileURL, stylesDirectoryURL: stylesDirectoryURL) else {
                 continue
             }
 
@@ -89,7 +86,7 @@ enum HighlightJSThemeCatalog {
                 identifier: identifier,
                 displayName: humanizedDisplayName(for: identifier)
             )
-            entriesByIdentifier[identifier] = ThemeEntry(definition: definition, css: css)
+            entriesByIdentifier[identifier] = ThemeEntry(definition: definition, fileURL: fileURL)
         }
 
         return entriesByIdentifier
@@ -147,6 +144,37 @@ enum HighlightJSThemeCatalog {
 
     private struct ThemeEntry {
         let definition: HighlightJSThemeDefinition
-        let css: String
+        let fileURL: URL
+    }
+
+    private final class ThemeCSSCache: @unchecked Sendable {
+        private var cssByIdentifier: [String: String] = [:]
+        private let lock = NSLock()
+
+        func css(for identifier: String, fileURL: URL) -> String? {
+            if let cached = cachedCSS(for: identifier) {
+                return cached
+            }
+
+            guard let css = try? String(contentsOf: fileURL, encoding: .utf8),
+                  css.contains(".hljs") else {
+                return nil
+            }
+
+            store(css: css, for: identifier)
+            return css
+        }
+
+        private func cachedCSS(for identifier: String) -> String? {
+            lock.lock()
+            defer { lock.unlock() }
+            return cssByIdentifier[identifier]
+        }
+
+        private func store(css: String, for identifier: String) {
+            lock.lock()
+            cssByIdentifier[identifier] = css
+            lock.unlock()
+        }
     }
 }

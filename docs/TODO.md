@@ -49,11 +49,10 @@
     - 優先消費ウィンドウを `key` → `main` → 最小 `windowNumber` の順で決定。
     - `AppOpenFileQueue` は優先ウィンドウが一括消費し、複数ファイルは先頭を現在ウィンドウ、残りを新規ウィンドウで開く。
 
-- [ ] P2: `HighlightJSThemeCatalog` の CSS 読み込みを遅延化する
-  - 問題:
-    - 初期化時に全テーマ CSS を文字列で読み込むため、起動時 I/O とメモリ使用量が大きい。
-  - 期待:
-    - テーマ一覧メタデータと CSS 本体ロードを分離し、選択時に必要な CSS のみ読む。
+- [x] P2: `HighlightJSThemeCatalog` の CSS 読み込みを遅延化する
+  - 対応済み:
+    - 初期化時はテーマ定義（identifier/displayName/fileURL）のみ収集する。
+    - CSS 本体はテーマ選択時にオンデマンドで読み込み、メモリ内キャッシュで再利用する。
 
 - [ ] P3: `MDPrevCommands` のテーマメニュー構築ロジックを整理する
   - 問題:

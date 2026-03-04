@@ -3,7 +3,7 @@ import cmark_gfm
 import cmark_gfm_extensions
 
 protocol MarkdownRenderingEngine {
-    func renderHTML(_ markdown: String, baseFontSize: Double) -> String
+    func renderHTML(_ markdown: String, baseFontSize: Double, theme: PreviewTheme) -> String
 }
 
 struct MarkdownRenderer {
@@ -14,16 +14,25 @@ struct MarkdownRenderer {
     }
 
     func renderHTML(_ markdown: String) -> String {
-        renderHTML(markdown, baseFontSize: Self.defaultBaseFontSize)
+        renderHTML(
+            markdown,
+            baseFontSize: Self.defaultBaseFontSize,
+            theme: PreviewTheme.defaultTheme
+        )
     }
 
-    func renderHTML(_ markdown: String, baseFontSize: Double) -> String {
-        engine.renderHTML(markdown, baseFontSize: baseFontSize)
+    func renderHTML(
+        _ markdown: String,
+        baseFontSize: Double,
+        theme: PreviewTheme = PreviewTheme.defaultTheme
+    ) -> String {
+        engine.renderHTML(markdown, baseFontSize: baseFontSize, theme: theme)
     }
 
     static func placeholderHTML(
         _ message: String,
         baseFontSize: Double = defaultBaseFontSize,
+        theme: PreviewTheme = PreviewTheme.defaultTheme,
         recentFiles: [URL] = []
     ) -> String {
         var body = "<p>\(escapeHTML(message))</p>"
@@ -49,7 +58,7 @@ struct MarkdownRenderer {
             body += "</section>"
         }
 
-        return CMarkGFMRenderer.wrapHTML(body, baseFontSize: baseFontSize)
+        return CMarkGFMRenderer.wrapHTML(body, baseFontSize: baseFontSize, theme: theme)
     }
 
     static func escapeHTML(_ text: String) -> String {
@@ -77,13 +86,17 @@ struct MarkdownRenderer {
 }
 
 struct CMarkGFMRenderer: MarkdownRenderingEngine {
-    func renderHTML(_ markdown: String, baseFontSize: Double) -> String {
+    func renderHTML(_ markdown: String, baseFontSize: Double, theme: PreviewTheme) -> String {
         guard let htmlBody = renderHTMLBody(markdown) else {
             let escaped = MarkdownRenderer.escapeHTML(markdown)
-            return Self.wrapHTML("<pre><code>\(escaped)</code></pre>", baseFontSize: baseFontSize)
+            return Self.wrapHTML(
+                "<pre><code>\(escaped)</code></pre>",
+                baseFontSize: baseFontSize,
+                theme: theme
+            )
         }
 
-        return Self.wrapHTML(htmlBody, baseFontSize: baseFontSize)
+        return Self.wrapHTML(htmlBody, baseFontSize: baseFontSize, theme: theme)
     }
 
     func renderHTMLBody(_ markdown: String) -> String? {
@@ -133,9 +146,16 @@ struct CMarkGFMRenderer: MarkdownRenderingEngine {
         return String(cString: rendered)
     }
 
-    static func wrapHTML(_ htmlBody: String, baseFontSize: Double = MarkdownRenderer.defaultBaseFontSize) -> String {
+    static func wrapHTML(
+        _ htmlBody: String,
+        baseFontSize: Double = MarkdownRenderer.defaultBaseFontSize,
+        theme: PreviewTheme = PreviewTheme.defaultTheme
+    ) -> String {
         let clampedFontSize = min(max(baseFontSize, 12), 30)
         let fontSizeValue = cssPixelValue(clampedFontSize)
+        let rootVariables = cssVariables(theme.baseColors)
+        let darkModeVariables = theme.darkModeCSSVariables
+        let colorScheme = theme.colorScheme
 
         return """
         <!doctype html>
@@ -145,25 +165,11 @@ struct CMarkGFMRenderer: MarkdownRenderingEngine {
             <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />
             <style>
               :root {
-                color-scheme: light dark;
-                --text: #1f2328;
-                --muted: #59636e;
-                --bg: #ffffff;
-                --code-bg: #f6f8fa;
-                --border: #d0d7de;
-                --row-alt: #f6f8fa;
+                color-scheme: \(colorScheme);
+                \(rootVariables)
               }
 
-              @media (prefers-color-scheme: dark) {
-                :root {
-                  --text: #e6edf3;
-                  --muted: #9da7b3;
-                  --bg: #0d1117;
-                  --code-bg: #161b22;
-                  --border: #30363d;
-                  --row-alt: #161b22;
-                }
-              }
+              \(darkModeVariables)
 
               body {
                 margin: 0;
@@ -247,13 +253,7 @@ struct CMarkGFMRenderer: MarkdownRenderingEngine {
               }
 
               a {
-                color: #0969da;
-              }
-
-              @media (prefers-color-scheme: dark) {
-                a {
-                  color: #58a6ff;
-                }
+                color: var(--link);
               }
 
               .recent-files {
@@ -304,5 +304,100 @@ struct CMarkGFMRenderer: MarkdownRenderingEngine {
         }
 
         return String(format: "%.2f", locale: Locale(identifier: "en_US_POSIX"), value)
+    }
+
+    fileprivate static func cssVariables(_ colors: PreviewThemeColors) -> String {
+        """
+                --text: \(colors.text);
+                --muted: \(colors.muted);
+                --bg: \(colors.background);
+                --code-bg: \(colors.codeBackground);
+                --border: \(colors.border);
+                --row-alt: \(colors.rowAlternate);
+                --link: \(colors.link);
+        """
+    }
+}
+
+fileprivate struct PreviewThemeColors {
+    let text: String
+    let muted: String
+    let background: String
+    let codeBackground: String
+    let border: String
+    let rowAlternate: String
+    let link: String
+}
+
+private extension PreviewTheme {
+    var colorScheme: String {
+        switch self {
+        case .system:
+            return "light dark"
+        case .light, .sepia:
+            return "light"
+        case .dark:
+            return "dark"
+        }
+    }
+
+    var baseColors: PreviewThemeColors {
+        switch self {
+        case .system, .light:
+            return PreviewThemeColors(
+                text: "#1f2328",
+                muted: "#59636e",
+                background: "#ffffff",
+                codeBackground: "#f6f8fa",
+                border: "#d0d7de",
+                rowAlternate: "#f6f8fa",
+                link: "#0969da"
+            )
+        case .dark:
+            return PreviewThemeColors(
+                text: "#e6edf3",
+                muted: "#9da7b3",
+                background: "#0d1117",
+                codeBackground: "#161b22",
+                border: "#30363d",
+                rowAlternate: "#161b22",
+                link: "#58a6ff"
+            )
+        case .sepia:
+            return PreviewThemeColors(
+                text: "#3a2f22",
+                muted: "#6f624f",
+                background: "#f7f0dd",
+                codeBackground: "#efe5cc",
+                border: "#d4c4a1",
+                rowAlternate: "#f1e7d0",
+                link: "#0f5e9c"
+            )
+        }
+    }
+
+    var darkModeCSSVariables: String {
+        guard self == .system else {
+            return ""
+        }
+
+        let darkColors = PreviewThemeColors(
+            text: "#e6edf3",
+            muted: "#9da7b3",
+            background: "#0d1117",
+            codeBackground: "#161b22",
+            border: "#30363d",
+            rowAlternate: "#161b22",
+            link: "#58a6ff"
+        )
+
+        let darkVariables = CMarkGFMRenderer.cssVariables(darkColors)
+        return """
+              @media (prefers-color-scheme: dark) {
+                :root {
+                  \(darkVariables)
+                }
+              }
+        """
     }
 }

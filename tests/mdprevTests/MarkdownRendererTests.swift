@@ -45,6 +45,26 @@ final class MarkdownRendererTests: XCTestCase {
         XCTAssertFalse(output.contains("white-space: nowrap;"))
     }
 
+    func testRendererUsesSepiaThemeColorsWhenConfigured() {
+        let renderer = MarkdownRenderer()
+
+        let output = renderer.renderHTML("body", baseFontSize: 16, theme: .sepia)
+
+        XCTAssertTrue(output.contains("color-scheme: light;"))
+        XCTAssertTrue(output.contains("--bg: #f7f0dd;"))
+        XCTAssertTrue(output.contains("--link: #0f5e9c;"))
+        XCTAssertFalse(output.contains("prefers-color-scheme: dark"))
+    }
+
+    func testRendererIncludesDarkModeMediaQueryForSystemTheme() {
+        let renderer = MarkdownRenderer()
+
+        let output = renderer.renderHTML("body", baseFontSize: 16, theme: .system)
+
+        XCTAssertTrue(output.contains("color-scheme: light dark;"))
+        XCTAssertTrue(output.contains("@media (prefers-color-scheme: dark)"))
+    }
+
     func testRendererEmbedsConfiguredBaseFontSize() {
         let renderer = MarkdownRenderer()
 

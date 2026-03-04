@@ -1,0 +1,44 @@
+import Foundation
+import XCTest
+@testable import mdprev
+
+@MainActor
+final class AppModelThemeTests: XCTestCase {
+    func testPreviewThemeDefaultsToSystem() {
+        let defaults = makeIsolatedDefaults()
+        let model = makeModel(defaults: defaults, suffix: "default")
+
+        XCTAssertEqual(model.previewTheme, .system)
+        XCTAssertTrue(model.renderedHTML.contains("color-scheme: light dark;"))
+    }
+
+    func testPreviewThemePersistsAcrossModelRecreation() {
+        let defaults = makeIsolatedDefaults()
+        let model = makeModel(defaults: defaults, suffix: "persist")
+
+        model.setPreviewTheme(.sepia)
+
+        let reloaded = makeModel(defaults: defaults, suffix: "persist")
+        XCTAssertEqual(reloaded.previewTheme, .sepia)
+        XCTAssertTrue(reloaded.renderedHTML.contains("--bg: #f7f0dd;"))
+    }
+
+    private func makeModel(defaults: UserDefaults, suffix: String) -> AppModel {
+        let store = RecentFilesStore(
+            userDefaults: defaults,
+            defaultsKey: "recent.theme.\(suffix)"
+        )
+
+        return AppModel(
+            userDefaults: defaults,
+            recentFilesStore: store
+        )
+    }
+
+    private func makeIsolatedDefaults() -> UserDefaults {
+        let suiteName = "mdprev.tests.theme.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defaults.removePersistentDomain(forName: suiteName)
+        return defaults
+    }
+}

@@ -16,6 +16,16 @@ final class AppModel: ObservableObject {
             configureWatcher()
         }
     }
+    @Published var previewTheme: PreviewTheme {
+        didSet {
+            guard oldValue != previewTheme else {
+                return
+            }
+
+            userDefaults.set(previewTheme.rawValue, forKey: Self.previewThemeDefaultsKey)
+            reload()
+        }
+    }
     @Published var baseFontSize: Double {
         didSet {
             let clamped = Self.clampBaseFontSize(baseFontSize)
@@ -65,11 +75,17 @@ final class AppModel: ObservableObject {
         } else {
             initialBaseFontSize = Self.defaultBaseFontSize
         }
+        let initialPreviewTheme = PreviewTheme(
+            storedValue: userDefaults.string(forKey: Self.previewThemeDefaultsKey)
+        )
+
+        self.previewTheme = initialPreviewTheme
         self.baseFontSize = initialBaseFontSize
 
         self.renderedHTML = MarkdownRenderer.placeholderHTML(
             Self.noFileSelectedMessage,
             baseFontSize: initialBaseFontSize,
+            theme: initialPreviewTheme,
             recentFiles: recentFilesStore.fileURLs
         )
 
@@ -122,6 +138,7 @@ final class AppModel: ObservableObject {
             renderedHTML = MarkdownRenderer.placeholderHTML(
                 Self.noFileSelectedMessage,
                 baseFontSize: baseFontSize,
+                theme: previewTheme,
                 recentFiles: recentFilesStore.fileURLs
             )
             lastReloadDate = nil
@@ -195,11 +212,16 @@ final class AppModel: ObservableObject {
         baseFontSize = Self.defaultBaseFontSize
     }
 
+    func setPreviewTheme(_ theme: PreviewTheme) {
+        previewTheme = theme
+    }
+
     func reload() {
         guard let fileURL = selectedFileURL else {
             renderedHTML = MarkdownRenderer.placeholderHTML(
                 Self.noFileSelectedMessage,
                 baseFontSize: baseFontSize,
+                theme: previewTheme,
                 recentFiles: recentFilesStore.fileURLs
             )
             statusMessage = "No file selected."
@@ -209,13 +231,18 @@ final class AppModel: ObservableObject {
 
         do {
             let markdown = try String(contentsOf: fileURL, encoding: .utf8)
-            renderedHTML = renderer.renderHTML(markdown, baseFontSize: baseFontSize)
+            renderedHTML = renderer.renderHTML(
+                markdown,
+                baseFontSize: baseFontSize,
+                theme: previewTheme
+            )
             statusMessage = "Previewing \(fileURL.lastPathComponent)"
             lastReloadDate = Date()
         } catch {
             renderedHTML = MarkdownRenderer.placeholderHTML(
                 "Failed to load file.",
-                baseFontSize: baseFontSize
+                baseFontSize: baseFontSize,
+                theme: previewTheme
             )
             statusMessage = "Could not read \(fileURL.lastPathComponent): \(error.localizedDescription)"
         }
@@ -256,6 +283,7 @@ final class AppModel: ObservableObject {
     }()
 
     private static let baseFontSizeDefaultsKey = "preview.baseFontSize"
+    private static let previewThemeDefaultsKey = "preview.theme"
     private static let noFileSelectedMessage = "Open a Markdown file to start previewing."
 
     private static func clampBaseFontSize(_ value: Double) -> Double {

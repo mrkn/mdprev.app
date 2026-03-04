@@ -164,7 +164,26 @@ private struct MDPrevCommands: Commands {
                 focusedModel == nil ||
                 focusedModel?.baseFontSize == AppModel.defaultBaseFontSize
             )
+
+            Divider()
+
+            Menu("Theme") {
+                ForEach(PreviewTheme.allCases, id: \.self) { theme in
+                    Button(themeMenuTitle(for: theme)) {
+                        focusedModel?.setPreviewTheme(theme)
+                    }
+                    .disabled(focusedModel == nil)
+                }
+            }
         }
+    }
+
+    private func themeMenuTitle(for theme: PreviewTheme) -> String {
+        if focusedModel?.previewTheme == theme {
+            return "✓ \(theme.displayName)"
+        }
+
+        return theme.displayName
     }
 
     private func openRecentFile(_ fileURL: URL) {

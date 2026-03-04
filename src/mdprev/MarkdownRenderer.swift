@@ -89,14 +89,18 @@ struct CMarkGFMRenderer: MarkdownRenderingEngine {
     func renderHTML(_ markdown: String, baseFontSize: Double, theme: PreviewTheme) -> String {
         guard let htmlBody = renderHTMLBody(markdown) else {
             let escaped = MarkdownRenderer.escapeHTML(markdown)
+            let numberedFallback = Self.addLineNumbers(
+                to: "<pre><code>\(escaped)</code></pre>"
+            )
             return Self.wrapHTML(
-                "<pre><code>\(escaped)</code></pre>",
+                numberedFallback,
                 baseFontSize: baseFontSize,
                 theme: theme
             )
         }
 
-        return Self.wrapHTML(htmlBody, baseFontSize: baseFontSize, theme: theme)
+        let numberedHTMLBody = Self.addLineNumbers(to: htmlBody)
+        return Self.wrapHTML(numberedHTMLBody, baseFontSize: baseFontSize, theme: theme)
     }
 
     func renderHTMLBody(_ markdown: String) -> String? {
@@ -214,6 +218,41 @@ struct CMarkGFMRenderer: MarkdownRenderingEngine {
                 padding: 0;
               }
 
+              pre.mdprev-codeblock {
+                padding: 0;
+              }
+
+              pre.mdprev-codeblock code {
+                display: block;
+                padding: 12px 0;
+              }
+
+              pre.mdprev-codeblock .mdprev-code-line {
+                display: grid;
+                grid-template-columns: 44px minmax(0, 1fr);
+                column-gap: 10px;
+                align-items: baseline;
+                padding: 0 12px;
+                min-height: 1.5em;
+              }
+
+              pre.mdprev-codeblock .mdprev-code-line-number {
+                text-align: right;
+                color: var(--muted);
+                opacity: 0.7;
+                user-select: none;
+                -webkit-user-select: none;
+                pointer-events: none;
+                font-variant-numeric: tabular-nums;
+              }
+
+              pre.mdprev-codeblock .mdprev-code-line-text {
+                white-space: pre;
+                overflow-wrap: normal;
+                word-break: normal;
+                min-width: 0;
+              }
+
               code {
                 background: var(--code-bg);
                 border-radius: 4px;
@@ -317,6 +356,58 @@ struct CMarkGFMRenderer: MarkdownRenderingEngine {
                 --link: \(colors.link);
         """
     }
+
+    private static func addLineNumbers(to htmlBody: String) -> String {
+        let fullRange = NSRange(htmlBody.startIndex..<htmlBody.endIndex, in: htmlBody)
+        let matches = codeBlockRegex.matches(in: htmlBody, options: [], range: fullRange)
+
+        guard !matches.isEmpty else {
+            return htmlBody
+        }
+
+        var result = htmlBody
+        for match in matches.reversed() {
+            guard let matchRange = Range(match.range, in: result),
+                  let attributesRange = Range(match.range(at: 1), in: result),
+                  let codeRange = Range(match.range(at: 2), in: result) else {
+                continue
+            }
+
+            let attributes = String(result[attributesRange])
+            let codeContent = String(result[codeRange])
+            let numberedCodeContent = numberedCodeContent(from: codeContent)
+            let replacement = "<pre class=\"mdprev-codeblock\"><code\(attributes)>\(numberedCodeContent)</code></pre>"
+            result.replaceSubrange(matchRange, with: replacement)
+        }
+
+        return result
+    }
+
+    private static func numberedCodeContent(from encodedCodeContent: String) -> String {
+        let hasTrailingNewline = encodedCodeContent.hasSuffix("\n")
+        var lines = encodedCodeContent.components(separatedBy: "\n")
+
+        if hasTrailingNewline, !lines.isEmpty {
+            lines.removeLast()
+        }
+
+        if lines.isEmpty {
+            lines = [""]
+        }
+
+        let numberedLines = lines.enumerated().map { index, line in
+            """
+            <span class="mdprev-code-line"><span class="mdprev-code-line-number" aria-hidden="true">\(index + 1)</span><span class="mdprev-code-line-text">\(line)</span></span>
+            """
+        }
+
+        return numberedLines.joined()
+    }
+
+    private static let codeBlockRegex = try! NSRegularExpression(
+        pattern: #"<pre><code([^>]*)>(.*?)</code></pre>"#,
+        options: [.dotMatchesLineSeparators]
+    )
 }
 
 fileprivate struct PreviewThemeColors {

@@ -45,6 +45,51 @@ final class MarkdownRendererTests: XCTestCase {
         XCTAssertFalse(output.contains("white-space: nowrap;"))
     }
 
+    func testRendererAddsLineNumbersToFencedCodeBlocks() {
+        let renderer = MarkdownRenderer()
+        let markdown = """
+        ```swift
+        let a = 1
+        let b = 2
+        ```
+        """
+
+        let output = renderer.renderHTML(markdown)
+
+        XCTAssertTrue(output.contains("class=\"mdprev-code-line-number\""))
+        XCTAssertTrue(output.contains("aria-hidden=\"true\">1</span>"))
+        XCTAssertTrue(output.contains("aria-hidden=\"true\">2</span>"))
+        XCTAssertFalse(output.contains("mdprev-code-line::before"))
+    }
+
+    func testRendererUsesNonSelectableLineNumbers() {
+        let renderer = MarkdownRenderer()
+        let markdown = """
+        ```text
+        hello
+        ```
+        """
+
+        let output = renderer.renderHTML(markdown)
+
+        XCTAssertTrue(output.contains("user-select: none;"))
+        XCTAssertTrue(output.contains("-webkit-user-select: none;"))
+    }
+
+    func testRendererDoesNotInsertNewlineTextNodesBetweenCodeLines() {
+        let renderer = MarkdownRenderer()
+        let markdown = """
+        ```text
+        a
+        b
+        ```
+        """
+
+        let output = renderer.renderHTML(markdown)
+
+        XCTAssertTrue(output.contains("</span></span><span class=\"mdprev-code-line\">"))
+    }
+
     func testRendererUsesSepiaThemeColorsWhenConfigured() {
         let renderer = MarkdownRenderer()
 

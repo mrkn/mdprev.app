@@ -74,6 +74,7 @@ final class MarkdownRendererTests: XCTestCase {
 
         XCTAssertTrue(output.contains("class=\"mdprev-codeblock-header\""))
         XCTAssertTrue(output.contains("class=\"mdprev-codeblock-language\">python</span>"))
+        XCTAssertTrue(output.contains("class=\"mdprev-codeblock-container\" data-language=\"python\""))
     }
 
     func testRendererShowsFileNameHeaderWhenSpecifiedInFenceInfo() {
@@ -101,6 +102,7 @@ final class MarkdownRendererTests: XCTestCase {
 
         XCTAssertTrue(output.contains("class=\"mdprev-codeblock-language\">python</span>"))
         XCTAssertTrue(output.contains("class=\"mdprev-codeblock-filename\">src/main.py</span>"))
+        XCTAssertTrue(output.contains("class=\"mdprev-codeblock-container\" data-language=\"python\""))
     }
 
     func testRendererSupportsDocusaurusStyleTitleMetadata() {
@@ -143,6 +145,21 @@ final class MarkdownRendererTests: XCTestCase {
 
         XCTAssertTrue(output.contains("user-select: none;"))
         XCTAssertTrue(output.contains("-webkit-user-select: none;"))
+    }
+
+    func testRendererEmbedsHighlightBootstrapScript() {
+        let renderer = MarkdownRenderer()
+        let markdown = """
+        ```swift
+        let a = 1
+        ```
+        """
+
+        let output = renderer.renderHTML(markdown)
+
+        XCTAssertTrue(output.contains(HighlightJSSupport.bootstrapMarker))
+        XCTAssertTrue(output.contains("window.hljs"))
+        XCTAssertTrue(output.contains("Highlight.js v11.11.1"))
     }
 
     func testRendererDoesNotInsertNewlineTextNodesBetweenCodeLines() {
@@ -198,5 +215,22 @@ final class MarkdownRendererTests: XCTestCase {
         XCTAssertTrue(output.contains("Recent Files"))
         XCTAssertTrue(output.contains("sample.md"))
         XCTAssertTrue(output.contains("mdprev-open-file://open?path="))
+    }
+
+    func testRendererProcessesTESTMarkdownWithHighlightAssets() throws {
+        let fixtureURL = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent("TEST.md")
+        let markdown = try String(contentsOf: fixtureURL, encoding: .utf8)
+
+        let renderer = MarkdownRenderer()
+        let output = renderer.renderHTML(markdown)
+
+        XCTAssertTrue(output.contains("class=\"mdprev-codeblock-language\">py</span>"))
+        XCTAssertTrue(output.contains("class=\"mdprev-codeblock-filename\">test.py</span>"))
+        XCTAssertTrue(output.contains("class=\"mdprev-codeblock-container\" data-language=\"py\""))
+        XCTAssertTrue(output.contains("Highlight.js v11.11.1"))
     }
 }

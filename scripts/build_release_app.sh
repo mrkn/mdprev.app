@@ -37,6 +37,10 @@ mkdir -p "${MACOS_PATH}" "${RESOURCES_PATH}"
 cp "${BIN_PATH}" "${MACOS_PATH}/${APP_NAME}"
 chmod +x "${MACOS_PATH}/${APP_NAME}"
 
+while IFS= read -r -d '' bundle_path; do
+  cp -R "${bundle_path}" "${RESOURCES_PATH}/"
+done < <(find .build -type d -path "*/release/${APP_NAME}_*.bundle" -print0)
+
 HAS_ICON="false"
 if [[ -f "${ICON_SOURCE_ICNS}" ]]; then
   cp "${ICON_SOURCE_ICNS}" "${ICON_OUTPUT_ICNS}"

@@ -292,6 +292,8 @@ struct CMarkGFMRenderer: MarkdownRenderingEngine {
                 min-width: 0;
               }
 
+              \(HighlightJSSupport.syntaxTokenCSS)
+
               code {
                 background: var(--code-bg);
                 border-radius: 4px;
@@ -371,6 +373,7 @@ struct CMarkGFMRenderer: MarkdownRenderingEngine {
           </head>
           <body>
           \(htmlBody)
+          \(HighlightJSSupport.inlineScriptTagsHTML)
           </body>
         </html>
         """
@@ -393,6 +396,14 @@ struct CMarkGFMRenderer: MarkdownRenderingEngine {
                 --border: \(colors.border);
                 --row-alt: \(colors.rowAlternate);
                 --link: \(colors.link);
+                --syntax-text: \(colors.syntaxText);
+                --syntax-comment: \(colors.syntaxComment);
+                --syntax-keyword: \(colors.syntaxKeyword);
+                --syntax-string: \(colors.syntaxString);
+                --syntax-number: \(colors.syntaxNumber);
+                --syntax-type: \(colors.syntaxType);
+                --syntax-function: \(colors.syntaxFunction);
+                --syntax-variable: \(colors.syntaxVariable);
         """
     }
 
@@ -427,7 +438,8 @@ struct CMarkGFMRenderer: MarkdownRenderingEngine {
             let fileName = metadataForBlock?.fileName
             let headerHTML = codeBlockHeaderHTML(language: language, fileName: fileName)
             let preHTML = "<pre\(normalizedPreAttributes)><code\(codeAttributes)>\(numberedCodeContent)</code></pre>"
-            let replacement = "<div class=\"mdprev-codeblock-container\">\(headerHTML)\(preHTML)</div>"
+            let dataLanguageAttribute = htmlAttribute(name: "data-language", value: language)
+            let replacement = "<div class=\"mdprev-codeblock-container\"\(dataLanguageAttribute)>\(headerHTML)\(preHTML)</div>"
             result.replaceSubrange(matchRange, with: replacement)
         }
 
@@ -490,6 +502,15 @@ struct CMarkGFMRenderer: MarkdownRenderingEngine {
         var mergedAttributes = attributes
         mergedAttributes.replaceSubrange(classValueRange, with: classes.joined(separator: " "))
         return mergedAttributes
+    }
+
+    private static func htmlAttribute(name: String, value: String?) -> String {
+        guard let trimmedValue = value?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !trimmedValue.isEmpty else {
+            return ""
+        }
+
+        return " \(name)=\"\(MarkdownRenderer.escapeHTML(trimmedValue))\""
     }
 
     private static func languageFromCodeAttributes(_ attributes: String) -> String? {
@@ -832,6 +853,14 @@ fileprivate struct PreviewThemeColors {
     let border: String
     let rowAlternate: String
     let link: String
+    let syntaxText: String
+    let syntaxComment: String
+    let syntaxKeyword: String
+    let syntaxString: String
+    let syntaxNumber: String
+    let syntaxType: String
+    let syntaxFunction: String
+    let syntaxVariable: String
 }
 
 private extension PreviewTheme {
@@ -856,7 +885,15 @@ private extension PreviewTheme {
                 codeBackground: "#f6f8fa",
                 border: "#d0d7de",
                 rowAlternate: "#f6f8fa",
-                link: "#0969da"
+                link: "#0969da",
+                syntaxText: "#1f2328",
+                syntaxComment: "#6e7781",
+                syntaxKeyword: "#cf222e",
+                syntaxString: "#0a3069",
+                syntaxNumber: "#0550ae",
+                syntaxType: "#953800",
+                syntaxFunction: "#8250df",
+                syntaxVariable: "#1f2328"
             )
         case .dark:
             return PreviewThemeColors(
@@ -866,7 +903,15 @@ private extension PreviewTheme {
                 codeBackground: "#161b22",
                 border: "#30363d",
                 rowAlternate: "#161b22",
-                link: "#58a6ff"
+                link: "#58a6ff",
+                syntaxText: "#e6edf3",
+                syntaxComment: "#8b949e",
+                syntaxKeyword: "#ff7b72",
+                syntaxString: "#a5d6ff",
+                syntaxNumber: "#79c0ff",
+                syntaxType: "#ffa657",
+                syntaxFunction: "#d2a8ff",
+                syntaxVariable: "#c9d1d9"
             )
         case .sepia:
             return PreviewThemeColors(
@@ -876,7 +921,15 @@ private extension PreviewTheme {
                 codeBackground: "#efe5cc",
                 border: "#d4c4a1",
                 rowAlternate: "#f1e7d0",
-                link: "#0f5e9c"
+                link: "#0f5e9c",
+                syntaxText: "#3a2f22",
+                syntaxComment: "#8a7a63",
+                syntaxKeyword: "#9f2f26",
+                syntaxString: "#285f8f",
+                syntaxNumber: "#0f5e9c",
+                syntaxType: "#825a2c",
+                syntaxFunction: "#7a3f8f",
+                syntaxVariable: "#3a2f22"
             )
         }
     }
@@ -893,7 +946,15 @@ private extension PreviewTheme {
             codeBackground: "#161b22",
             border: "#30363d",
             rowAlternate: "#161b22",
-            link: "#58a6ff"
+            link: "#58a6ff",
+            syntaxText: "#e6edf3",
+            syntaxComment: "#8b949e",
+            syntaxKeyword: "#ff7b72",
+            syntaxString: "#a5d6ff",
+            syntaxNumber: "#79c0ff",
+            syntaxType: "#ffa657",
+            syntaxFunction: "#d2a8ff",
+            syntaxVariable: "#c9d1d9"
         )
 
         let darkVariables = CMarkGFMRenderer.cssVariables(darkColors)

@@ -19,7 +19,10 @@ let package = Package(
                 .product(name: "cmark-gfm", package: "swift-cmark"),
                 .product(name: "cmark-gfm-extensions", package: "swift-cmark")
             ],
-            path: "src/mdprev"
+            path: "src/mdprev",
+            resources: [
+                .process("Resources")
+            ]
         ),
         .testTarget(
             name: "mdprevTests",

@@ -600,6 +600,10 @@ struct CMarkGFMRenderer: MarkdownRenderingEngine {
             return CodeBlockMetadata(language: nil, fileName: nil)
         }
 
+        if let attributeMetadata = parsePandocAttributeInfo(infoString) {
+            return attributeMetadata
+        }
+
         let tokens = splitInfoTokens(infoString)
         guard !tokens.isEmpty else {
             return CodeBlockMetadata(language: nil, fileName: nil)
@@ -634,6 +638,52 @@ struct CMarkGFMRenderer: MarkdownRenderingEngine {
 
             if language != nil || looksLikeFileName(token) {
                 fileName = normalizeInfoToken(token)
+            }
+        }
+
+        return CodeBlockMetadata(language: language, fileName: fileName)
+    }
+
+    private static func parsePandocAttributeInfo(_ infoString: String) -> CodeBlockMetadata? {
+        let trimmedInfo = infoString.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmedInfo.hasPrefix("{"), trimmedInfo.hasSuffix("}") else {
+            return nil
+        }
+
+        let contentStart = trimmedInfo.index(after: trimmedInfo.startIndex)
+        let contentEnd = trimmedInfo.index(before: trimmedInfo.endIndex)
+        let content = String(trimmedInfo[contentStart..<contentEnd])
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        let tokens = splitInfoTokens(content)
+
+        var language: String?
+        var fileName: String?
+
+        for token in tokens {
+            if let keyValue = parseKeyValueToken(token), isFileNameKey(keyValue.key) {
+                fileName = keyValue.value
+                continue
+            }
+
+            let normalized = normalizeInfoToken(token)
+            guard !normalized.isEmpty else {
+                continue
+            }
+
+            if normalized.hasPrefix(".") {
+                let className = String(normalized.dropFirst())
+                if language == nil, !className.isEmpty {
+                    language = className
+                }
+                continue
+            }
+
+            if normalized.hasPrefix("#") {
+                continue
+            }
+
+            if language == nil {
+                language = normalized
             }
         }
 

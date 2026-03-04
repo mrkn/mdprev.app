@@ -89,6 +89,20 @@ final class MarkdownRendererTests: XCTestCase {
         XCTAssertTrue(output.contains("class=\"mdprev-codeblock-filename\">main.swift</span>"))
     }
 
+    func testRendererSupportsPandocFenceAttributesForLanguageAndFileName() {
+        let renderer = MarkdownRenderer()
+        let markdown = """
+        ```{#snippet .python .numberLines filename=\"src/main.py\"}
+        print("hi")
+        ```
+        """
+
+        let output = renderer.renderHTML(markdown)
+
+        XCTAssertTrue(output.contains("class=\"mdprev-codeblock-language\">python</span>"))
+        XCTAssertTrue(output.contains("class=\"mdprev-codeblock-filename\">src/main.py</span>"))
+    }
+
     func testRendererUsesNonSelectableLineNumbers() {
         let renderer = MarkdownRenderer()
         let markdown = """

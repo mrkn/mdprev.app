@@ -1,7 +1,6 @@
 import AppKit
 import Combine
 import Foundation
-import UniformTypeIdentifiers
 
 @MainActor
 final class AppModel: ObservableObject {
@@ -56,27 +55,34 @@ final class AppModel: ObservableObject {
     @Published private(set) var selectAllRequestID: UInt = 0
 
     private let renderer: MarkdownRenderer
+    private let fileOpenService: any FileOpenServicing
+    private let externalURLService: any ExternalURLServicing
     private let userDefaults: UserDefaults
     private let recentFilesStore: RecentFilesStore
+    private let keyboardShortcutService: KeyboardShortcutService
     private var initialWindowOrigin: CGPoint?
     private var watcher: FileWatcher?
     private weak var attachedWindow: NSWindow?
     private let windowBehaviorController = WindowBehaviorController()
-    private var keyboardMonitor: Any?
     private var windowCloseObserver: NSObjectProtocol?
     private var recentFilesObserver: AnyCancellable?
-    private var suppressCommandReleaseAfterSelectAll = false
 
     init(
         renderer: MarkdownRenderer = MarkdownRenderer(),
+        fileOpenService: any FileOpenServicing = FileOpenService(),
+        externalURLService: any ExternalURLServicing = ExternalURLService(),
         userDefaults: UserDefaults = .standard,
         recentFilesStore: RecentFilesStore = RecentFilesStore(),
+        keyboardShortcutService: KeyboardShortcutService = KeyboardShortcutService(),
         initialFileURL: URL? = nil,
         initialWindowOrigin: CGPoint? = nil
     ) {
         self.renderer = renderer
+        self.fileOpenService = fileOpenService
+        self.externalURLService = externalURLService
         self.userDefaults = userDefaults
         self.recentFilesStore = recentFilesStore
+        self.keyboardShortcutService = keyboardShortcutService
         self.initialWindowOrigin = initialWindowOrigin
 
         let initialBaseFontSize: Double
@@ -112,7 +118,7 @@ final class AppModel: ObservableObject {
     }
 
     func requestFileOpen() {
-        guard let fileURL = Self.chooseFileURL() else {
+        guard let fileURL = fileOpenService.chooseFileURL() else {
             return
         }
 
@@ -120,17 +126,7 @@ final class AppModel: ObservableObject {
     }
 
     static func chooseFileURL() -> URL? {
-        let panel = NSOpenPanel()
-        panel.title = "Choose a Markdown file"
-        panel.allowsMultipleSelection = false
-        panel.canChooseDirectories = false
-        panel.allowedContentTypes = Self.supportedContentTypes
-
-        if panel.runModal() == .OK, let fileURL = panel.url {
-            return fileURL.standardizedFileURL
-        }
-
-        return nil
+        FileOpenService().chooseFileURL()
     }
 
     func openFile(_ fileURL: URL) {
@@ -139,14 +135,14 @@ final class AppModel: ObservableObject {
         reload()
         configureWatcher()
 
-        if FileManager.default.fileExists(atPath: normalizedFileURL.path) {
+        if fileOpenService.fileExists(at: normalizedFileURL) {
             recentFilesStore.record(normalizedFileURL)
         }
     }
 
     func openRecentFile(_ fileURL: URL) {
         let normalizedURL = fileURL.standardizedFileURL
-        guard FileManager.default.fileExists(atPath: normalizedURL.path) else {
+        guard fileOpenService.fileExists(at: normalizedURL) else {
             recentFilesStore.remove(normalizedURL)
             statusMessage = "File not found: \(normalizedURL.lastPathComponent)"
             NSSound.beep()
@@ -192,14 +188,15 @@ final class AppModel: ObservableObject {
     }
 
     func handleActivatedExternalURL(_ url: URL) {
-        Task { [weak self] in
+        Task { @MainActor [weak self] in
             guard let self else {
                 return
             }
 
-            let inspection = await ExternalURLInspector.inspect(url)
-            await MainActor.run {
-                self.confirmAndOpenExternalURL(url, inspection: inspection)
+            let result = await externalURLService.handle(url)
+            statusMessage = result.statusMessage
+            if result.shouldBeep {
+                NSSound.beep()
             }
         }
     }
@@ -273,7 +270,7 @@ final class AppModel: ObservableObject {
         }
 
         do {
-            let markdown = try String(contentsOf: fileURL, encoding: .utf8)
+            let markdown = try fileOpenService.readMarkdown(from: fileURL)
             renderedHTML = renderer.renderHTML(
                 markdown,
                 baseFontSize: baseFontSize,
@@ -314,19 +311,6 @@ final class AppModel: ObservableObject {
         }
     }
 
-    private static let supportedContentTypes: [UTType] = {
-        var types: [UTType] = [.plainText, .utf8PlainText, .text]
-
-        if let md = UTType(filenameExtension: "md") {
-            types.append(md)
-        }
-        if let markdown = UTType(filenameExtension: "markdown") {
-            types.append(markdown)
-        }
-
-        return types
-    }()
-
     private static let baseFontSizeDefaultsKey = "preview.baseFontSize"
     private static let previewThemeDefaultsKey = "preview.theme"
     private static let syntaxThemeDefaultsKey = "preview.syntaxTheme"
@@ -337,49 +321,17 @@ final class AppModel: ObservableObject {
     }
 
     private func installKeyboardMonitorIfNeeded() {
-        guard keyboardMonitor == nil else {
+        guard let attachedWindow else {
             return
         }
 
-        keyboardMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .flagsChanged]) { [weak self] event in
-            guard let self else {
-                return event
-            }
-            guard self.attachedWindow?.isKeyWindow == true else {
-                return event
-            }
-
-            switch event.type {
-            case .keyDown:
-                let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
-                if flags == [.command], event.charactersIgnoringModifiers?.lowercased() == "a" {
-                    self.requestSelectAll()
-                    self.suppressCommandReleaseAfterSelectAll = true
-                    return nil
-                }
-
-            case .flagsChanged:
-                if self.suppressCommandReleaseAfterSelectAll,
-                   !event.modifierFlags.contains(.command) {
-                    self.suppressCommandReleaseAfterSelectAll = false
-                    return nil
-                }
-
-            default:
-                break
-            }
-
-            return event
+        keyboardShortcutService.attach(to: attachedWindow) { [weak self] in
+            self?.requestSelectAll()
         }
     }
 
     private func removeKeyboardMonitor() {
-        guard let keyboardMonitor else {
-            return
-        }
-
-        NSEvent.removeMonitor(keyboardMonitor)
-        self.keyboardMonitor = nil
+        keyboardShortcutService.detach()
     }
 
     private func observeWindowClose(for window: NSWindow) {
@@ -420,30 +372,6 @@ final class AppModel: ObservableObject {
             if self.selectedFileURL == nil {
                 self.reload()
             }
-        }
-    }
-
-    private func confirmAndOpenExternalURL(_ url: URL, inspection: ExternalURLInspection) {
-        let prompt = ExternalURLPromptBuilder.build(url: url, inspection: inspection)
-
-        let alert = NSAlert()
-        alert.messageText = prompt.messageText
-        alert.informativeText = prompt.informativeText
-        alert.alertStyle = prompt.showsWarningStyle ? .warning : .informational
-        alert.addButton(withTitle: "Open")
-        alert.addButton(withTitle: "Cancel")
-
-        guard alert.runModal() == .alertFirstButtonReturn else {
-            statusMessage = "Cancelled opening external URL."
-            return
-        }
-
-        do {
-            try ExternalURLInspector.openWithOpenCommand(url)
-            statusMessage = "Opened external URL: \(url.absoluteString)"
-        } catch {
-            statusMessage = "Failed to open external URL: \(error.localizedDescription)"
-            NSSound.beep()
         }
     }
 }

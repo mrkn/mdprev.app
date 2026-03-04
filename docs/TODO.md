@@ -59,11 +59,10 @@
     - `SyntaxHighlightThemeMenuModel` を導入し、正規化・ソート・グルーピングを専用型へ分離。
     - `MDPrevCommands` 側はメニュー描画に専念させ、重複していた処理を削減した。
 
-- [ ] P3: `AppModel` の責務を分割する
-  - 問題:
-    - 状態管理、ファイルI/O、監視、キーボードイベント、外部 URL ダイアログまで単一クラスに集中。
-  - 期待:
-    - `FileOpenService` / `ExternalURLService` / `KeyboardShortcutService` などに分離し、テスト可能性を上げる。
+- [x] P3: `AppModel` の責務を分割する
+  - 対応済み:
+    - `FileOpenService` / `ExternalURLService` / `KeyboardShortcutService` を導入。
+    - `AppModel` からファイル選択/読込、外部 URL 確認、キーボード監視を分離し、依存注入可能にした。
 
 - [ ] P3: `MarkdownRenderer` の code fence 情報解析を分離する
   - 問題:

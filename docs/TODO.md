@@ -11,6 +11,9 @@
   - 対応:
     - `Cmd+A` / `Cmd` / `Option` 入力時に IMK ログが出ないようにする。
     - 複数ウィンドウの開閉を繰り返してもモニタが増殖しないことを確認する。
+  - 進捗:
+    - `KeyboardShortcutService` は `keyDown` の `Cmd+A` のみを監視し、`flagsChanged` 監視を廃止。
+    - 手動確認手順を `docs/manual_test_procedures.md` に追加（実機確認待ち）。
 
 - [x] `RecentFilesStore` の読み込み時にも最大件数 (`10`) を強制する
   - 対応済み:
@@ -70,7 +73,9 @@
     - parser 専用ユニットテストを追加し、代表的な info string バリエーションを直接検証できるようにした。
 
 ## テスト TODO
-- [ ] キーボードモニタ解除の回帰テスト戦略を追加する（少なくとも手動再現手順を `README` か `docs` に記載）。
+- [x] キーボードモニタ解除の回帰テスト戦略を追加する（少なくとも手動再現手順を `README` か `docs` に記載）。
+  - 対応済み:
+    - `docs/manual_test_procedures.md` に IMK ログ再現防止とウィンドウ増減時の確認手順を記載。
 - [x] Recent Files の「ロード時 10 件制限」をテストで保証する。
 - [x] `Option + クリック` の分岐ロジックをユニットテストで保証する。
 - [x] Finder 連携の優先消費ウィンドウ選択ロジックをユニットテストで保証する。

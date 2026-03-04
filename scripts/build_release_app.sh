@@ -74,6 +74,30 @@ if [[ "${HAS_ICON}" == "true" ]]; then
   <string>${APP_VERSION}</string>
   <key>CFBundleVersion</key>
   <string>${BUILD_NUMBER}</string>
+  <key>CFBundleDocumentTypes</key>
+  <array>
+    <dict>
+      <key>CFBundleTypeName</key>
+      <string>Markdown Document</string>
+      <key>CFBundleTypeRole</key>
+      <string>Viewer</string>
+      <key>LSHandlerRank</key>
+      <string>Owner</string>
+      <key>LSItemContentTypes</key>
+      <array>
+        <string>net.daringfireball.markdown</string>
+      </array>
+      <key>CFBundleTypeExtensions</key>
+      <array>
+        <string>md</string>
+        <string>markdown</string>
+      </array>
+      <key>CFBundleTypeMIMETypes</key>
+      <array>
+        <string>text/markdown</string>
+      </array>
+    </dict>
+  </array>
   <key>LSMinimumSystemVersion</key>
   <string>${MIN_SYSTEM_VERSION}</string>
   <key>NSHighResolutionCapable</key>
@@ -105,6 +129,30 @@ else
   <string>${APP_VERSION}</string>
   <key>CFBundleVersion</key>
   <string>${BUILD_NUMBER}</string>
+  <key>CFBundleDocumentTypes</key>
+  <array>
+    <dict>
+      <key>CFBundleTypeName</key>
+      <string>Markdown Document</string>
+      <key>CFBundleTypeRole</key>
+      <string>Viewer</string>
+      <key>LSHandlerRank</key>
+      <string>Owner</string>
+      <key>LSItemContentTypes</key>
+      <array>
+        <string>net.daringfireball.markdown</string>
+      </array>
+      <key>CFBundleTypeExtensions</key>
+      <array>
+        <string>md</string>
+        <string>markdown</string>
+      </array>
+      <key>CFBundleTypeMIMETypes</key>
+      <array>
+        <string>text/markdown</string>
+      </array>
+    </dict>
+  </array>
   <key>LSMinimumSystemVersion</key>
   <string>${MIN_SYSTEM_VERSION}</string>
   <key>NSHighResolutionCapable</key>

@@ -1,4 +1,5 @@
 import AppKit
+import Combine
 import SwiftUI
 
 struct PreviewWindowPayload: Hashable, Codable {
@@ -57,6 +58,28 @@ private struct PreviewWindowRootView: View {
         ContentView(model: model)
             .focusedSceneObject(model)
             .frame(minWidth: 720, minHeight: 500)
+            .onOpenURL { url in
+                guard url.isFileURL else {
+                    return
+                }
+
+                model.openFile(url.standardizedFileURL)
+            }
+            .task {
+                consumePendingOpenFileIfNeeded()
+            }
+            .onReceive(AppOpenFileQueue.shared.publisher) { _ in
+                consumePendingOpenFileIfNeeded()
+            }
+    }
+
+    @MainActor
+    private func consumePendingOpenFileIfNeeded() {
+        guard let fileURL = AppOpenFileQueue.shared.dequeueNext() else {
+            return
+        }
+
+        model.openFile(fileURL)
     }
 }
 
@@ -204,5 +227,46 @@ struct MDPrevApp: App {
 final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.regular)
+    }
+
+    func application(_ sender: NSApplication, openFile filename: String) -> Bool {
+        let fileURL = URL(fileURLWithPath: filename).standardizedFileURL
+        AppOpenFileQueue.shared.enqueue([fileURL])
+        return true
+    }
+
+    func application(_ sender: NSApplication, openFiles filenames: [String]) {
+        let fileURLs = filenames.map { URL(fileURLWithPath: $0).standardizedFileURL }
+        AppOpenFileQueue.shared.enqueue(fileURLs)
+        sender.reply(toOpenOrPrint: .success)
+    }
+}
+
+@MainActor
+private final class AppOpenFileQueue {
+    static let shared = AppOpenFileQueue()
+
+    private let eventSubject = PassthroughSubject<Void, Never>()
+    private var queue: [URL] = []
+
+    var publisher: AnyPublisher<Void, Never> {
+        eventSubject.eraseToAnyPublisher()
+    }
+
+    func enqueue(_ urls: [URL]) {
+        guard !urls.isEmpty else {
+            return
+        }
+
+        queue.append(contentsOf: urls)
+        eventSubject.send()
+    }
+
+    func dequeueNext() -> URL? {
+        guard !queue.isEmpty else {
+            return nil
+        }
+
+        return queue.removeFirst()
     }
 }

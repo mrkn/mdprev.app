@@ -62,6 +62,33 @@ final class MarkdownRendererTests: XCTestCase {
         XCTAssertFalse(output.contains("mdprev-code-line::before"))
     }
 
+    func testRendererShowsLanguageHeaderForFencedCodeBlocks() {
+        let renderer = MarkdownRenderer()
+        let markdown = """
+        ```python
+        print("hi")
+        ```
+        """
+
+        let output = renderer.renderHTML(markdown)
+
+        XCTAssertTrue(output.contains("class=\"mdprev-codeblock-header\""))
+        XCTAssertTrue(output.contains("class=\"mdprev-codeblock-language\">python</span>"))
+    }
+
+    func testRendererShowsFileNameHeaderWhenSpecifiedInFenceInfo() {
+        let renderer = MarkdownRenderer()
+        let markdown = """
+        ```swift filename=\"main.swift\"
+        print("hi")
+        ```
+        """
+
+        let output = renderer.renderHTML(markdown)
+
+        XCTAssertTrue(output.contains("class=\"mdprev-codeblock-filename\">main.swift</span>"))
+    }
+
     func testRendererUsesNonSelectableLineNumbers() {
         let renderer = MarkdownRenderer()
         let markdown = """

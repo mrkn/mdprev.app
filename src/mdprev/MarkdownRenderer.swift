@@ -87,10 +87,13 @@ struct MarkdownRenderer {
 
 struct CMarkGFMRenderer: MarkdownRenderingEngine {
     func renderHTML(_ markdown: String, baseFontSize: Double, theme: PreviewTheme) -> String {
+        let codeBlockMetadata = Self.extractFencedCodeMetadata(from: markdown)
+
         guard let htmlBody = renderHTMLBody(markdown) else {
             let escaped = MarkdownRenderer.escapeHTML(markdown)
             let numberedFallback = Self.addLineNumbers(
-                to: "<pre><code>\(escaped)</code></pre>"
+                to: "<pre><code>\(escaped)</code></pre>",
+                metadata: codeBlockMetadata
             )
             return Self.wrapHTML(
                 numberedFallback,
@@ -99,7 +102,7 @@ struct CMarkGFMRenderer: MarkdownRenderingEngine {
             )
         }
 
-        let numberedHTMLBody = Self.addLineNumbers(to: htmlBody)
+        let numberedHTMLBody = Self.addLineNumbers(to: htmlBody, metadata: codeBlockMetadata)
         return Self.wrapHTML(numberedHTMLBody, baseFontSize: baseFontSize, theme: theme)
     }
 
@@ -220,6 +223,42 @@ struct CMarkGFMRenderer: MarkdownRenderingEngine {
 
               pre.mdprev-codeblock {
                 padding: 0;
+                margin: 0;
+                border: none;
+                border-radius: 0;
+                background: transparent;
+              }
+
+              .mdprev-codeblock-container {
+                margin-top: 0;
+                margin-bottom: 16px;
+                background: var(--code-bg);
+                border: 1px solid var(--border);
+                border-radius: 6px;
+                overflow: hidden;
+              }
+
+              .mdprev-codeblock-header {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                padding: 8px 12px;
+                border-bottom: 1px solid var(--border);
+                color: var(--muted);
+                font-family: Menlo, SFMono-Regular, ui-monospace, monospace;
+                font-size: 0.82em;
+                line-height: 1.4;
+                user-select: none;
+                -webkit-user-select: none;
+              }
+
+              .mdprev-codeblock-language {
+                color: var(--text);
+                font-weight: 600;
+              }
+
+              .mdprev-codeblock-filename {
+                overflow-wrap: anywhere;
               }
 
               pre.mdprev-codeblock code {
@@ -357,7 +396,7 @@ struct CMarkGFMRenderer: MarkdownRenderingEngine {
         """
     }
 
-    private static func addLineNumbers(to htmlBody: String) -> String {
+    private static func addLineNumbers(to htmlBody: String, metadata: [CodeBlockMetadata]) -> String {
         let fullRange = NSRange(htmlBody.startIndex..<htmlBody.endIndex, in: htmlBody)
         let matches = codeBlockRegex.matches(in: htmlBody, options: [], range: fullRange)
 
@@ -366,17 +405,29 @@ struct CMarkGFMRenderer: MarkdownRenderingEngine {
         }
 
         var result = htmlBody
-        for match in matches.reversed() {
+        for (matchIndex, match) in matches.enumerated().reversed() {
             guard let matchRange = Range(match.range, in: result),
-                  let attributesRange = Range(match.range(at: 1), in: result),
-                  let codeRange = Range(match.range(at: 2), in: result) else {
+                  let preAttributesRange = Range(match.range(at: 1), in: result),
+                  let codeAttributesRange = Range(match.range(at: 2), in: result),
+                  let codeRange = Range(match.range(at: 3), in: result) else {
                 continue
             }
 
-            let attributes = String(result[attributesRange])
+            let preAttributes = String(result[preAttributesRange])
+            let codeAttributes = String(result[codeAttributesRange])
             let codeContent = String(result[codeRange])
             let numberedCodeContent = numberedCodeContent(from: codeContent)
-            let replacement = "<pre class=\"mdprev-codeblock\"><code\(attributes)>\(numberedCodeContent)</code></pre>"
+            let normalizedPreAttributes = mergedAttributes(preAttributes, addingClass: "mdprev-codeblock")
+            let metadataForBlock: CodeBlockMetadata? = if matchIndex < metadata.count {
+                metadata[matchIndex]
+            } else {
+                nil
+            }
+            let language = metadataForBlock?.language ?? languageFromCodeAttributes(codeAttributes)
+            let fileName = metadataForBlock?.fileName
+            let headerHTML = codeBlockHeaderHTML(language: language, fileName: fileName)
+            let preHTML = "<pre\(normalizedPreAttributes)><code\(codeAttributes)>\(numberedCodeContent)</code></pre>"
+            let replacement = "<div class=\"mdprev-codeblock-container\">\(headerHTML)\(preHTML)</div>"
             result.replaceSubrange(matchRange, with: replacement)
         }
 
@@ -401,13 +452,284 @@ struct CMarkGFMRenderer: MarkdownRenderingEngine {
             """
         }
 
-        return numberedLines.joined()
+        return numberedLines.joined() + (hasTrailingNewline ? "\n" : "")
+    }
+
+    private static func codeBlockHeaderHTML(language: String?, fileName: String?) -> String {
+        var segments: [String] = []
+
+        if let language = language?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !language.isEmpty {
+            segments.append("<span class=\"mdprev-codeblock-language\">\(MarkdownRenderer.escapeHTML(language))</span>")
+        }
+
+        if let fileName = fileName?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !fileName.isEmpty {
+            segments.append("<span class=\"mdprev-codeblock-filename\">\(MarkdownRenderer.escapeHTML(fileName))</span>")
+        }
+
+        guard !segments.isEmpty else {
+            return ""
+        }
+
+        return "<div class=\"mdprev-codeblock-header\" aria-hidden=\"true\">\(segments.joined(separator: ""))</div>"
+    }
+
+    private static func mergedAttributes(_ attributes: String, addingClass className: String) -> String {
+        let fullRange = NSRange(attributes.startIndex..<attributes.endIndex, in: attributes)
+        guard let classMatch = classAttributeRegex.firstMatch(in: attributes, options: [], range: fullRange),
+              let classValueRange = Range(classMatch.range(at: 1), in: attributes) else {
+            return attributes + " class=\"\(className)\""
+        }
+
+        var classes = attributes[classValueRange].split(separator: " ").map(String.init)
+        if !classes.contains(className) {
+            classes.append(className)
+        }
+
+        var mergedAttributes = attributes
+        mergedAttributes.replaceSubrange(classValueRange, with: classes.joined(separator: " "))
+        return mergedAttributes
+    }
+
+    private static func languageFromCodeAttributes(_ attributes: String) -> String? {
+        guard let classValue = attributeValue(named: "class", in: attributes) else {
+            return attributeValue(named: "lang", in: attributes)
+        }
+
+        for className in classValue.split(separator: " ") {
+            if className.hasPrefix("language-") {
+                return String(className.dropFirst("language-".count))
+            }
+        }
+
+        return attributeValue(named: "lang", in: attributes)
+    }
+
+    private static func attributeValue(named name: String, in attributes: String) -> String? {
+        let escapedName = NSRegularExpression.escapedPattern(for: name)
+        let regex = try! NSRegularExpression(
+            pattern: #"\b\#(escapedName)\s*=\s*"([^"]*)""#,
+            options: [.caseInsensitive]
+        )
+        let fullRange = NSRange(attributes.startIndex..<attributes.endIndex, in: attributes)
+        guard let match = regex.firstMatch(in: attributes, options: [], range: fullRange),
+              let valueRange = Range(match.range(at: 1), in: attributes) else {
+            return nil
+        }
+
+        return String(attributes[valueRange])
+    }
+
+    private static func extractFencedCodeMetadata(from markdown: String) -> [CodeBlockMetadata] {
+        let normalizedMarkdown = markdown
+            .replacingOccurrences(of: "\r\n", with: "\n")
+            .replacingOccurrences(of: "\r", with: "\n")
+        let lines = normalizedMarkdown.split(separator: "\n", omittingEmptySubsequences: false)
+
+        var metadataList: [CodeBlockMetadata] = []
+        var activeFence: (marker: Character, length: Int)?
+
+        for rawLine in lines {
+            let line = String(rawLine)
+
+            if let activeFenceState = activeFence {
+                if isClosingFence(
+                    line,
+                    marker: activeFenceState.marker,
+                    minimumLength: activeFenceState.length
+                ) {
+                    activeFence = nil
+                }
+                continue
+            }
+
+            guard let openingFence = openingFence(in: line) else {
+                continue
+            }
+
+            metadataList.append(parseCodeFenceInfo(openingFence.infoString))
+            activeFence = (marker: openingFence.marker, length: openingFence.length)
+        }
+
+        return metadataList
+    }
+
+    private static func openingFence(in line: String) -> (marker: Character, length: Int, infoString: String)? {
+        let leadingSpaces = line.prefix { $0 == " " }.count
+        guard leadingSpaces <= 3 else {
+            return nil
+        }
+
+        let body = line.dropFirst(leadingSpaces)
+        guard let marker = body.first, marker == "`" || marker == "~" else {
+            return nil
+        }
+
+        let fenceLength = body.prefix { $0 == marker }.count
+        guard fenceLength >= 3 else {
+            return nil
+        }
+
+        let infoString = body.dropFirst(fenceLength).trimmingCharacters(in: .whitespaces)
+        if marker == "`", infoString.contains("`") {
+            return nil
+        }
+
+        return (marker: marker, length: fenceLength, infoString: infoString)
+    }
+
+    private static func isClosingFence(_ line: String, marker: Character, minimumLength: Int) -> Bool {
+        let leadingSpaces = line.prefix { $0 == " " }.count
+        guard leadingSpaces <= 3 else {
+            return false
+        }
+
+        let body = line.dropFirst(leadingSpaces)
+        let fenceLength = body.prefix { $0 == marker }.count
+        guard fenceLength >= minimumLength else {
+            return false
+        }
+
+        let rest = body.dropFirst(fenceLength)
+        return rest.trimmingCharacters(in: .whitespaces).isEmpty
+    }
+
+    private static func parseCodeFenceInfo(_ infoString: String) -> CodeBlockMetadata {
+        guard !infoString.isEmpty else {
+            return CodeBlockMetadata(language: nil, fileName: nil)
+        }
+
+        let tokens = splitInfoTokens(infoString)
+        guard !tokens.isEmpty else {
+            return CodeBlockMetadata(language: nil, fileName: nil)
+        }
+
+        var language: String?
+        var fileName: String?
+
+        if let firstToken = tokens.first {
+            if let keyValue = parseKeyValueToken(firstToken) {
+                if isFileNameKey(keyValue.key) {
+                    fileName = keyValue.value
+                }
+            } else if looksLikeFileName(firstToken) {
+                fileName = normalizeInfoToken(firstToken)
+            } else {
+                language = normalizeInfoToken(firstToken)
+            }
+        }
+
+        for token in tokens.dropFirst() {
+            if let keyValue = parseKeyValueToken(token) {
+                if isFileNameKey(keyValue.key) {
+                    fileName = keyValue.value
+                }
+                continue
+            }
+
+            guard fileName == nil else {
+                continue
+            }
+
+            if language != nil || looksLikeFileName(token) {
+                fileName = normalizeInfoToken(token)
+            }
+        }
+
+        return CodeBlockMetadata(language: language, fileName: fileName)
+    }
+
+    private static func splitInfoTokens(_ infoString: String) -> [String] {
+        var tokens: [String] = []
+        var current = ""
+        var quote: Character?
+
+        for char in infoString {
+            if let currentQuote = quote {
+                current.append(char)
+                if char == currentQuote {
+                    quote = nil
+                }
+                continue
+            }
+
+            if char == "\"" || char == "'" {
+                quote = char
+                current.append(char)
+                continue
+            }
+
+            if char.isWhitespace {
+                if !current.isEmpty {
+                    tokens.append(current)
+                    current = ""
+                }
+                continue
+            }
+
+            current.append(char)
+        }
+
+        if !current.isEmpty {
+            tokens.append(current)
+        }
+
+        return tokens
+    }
+
+    private static func parseKeyValueToken(_ token: String) -> (key: String, value: String)? {
+        guard let separatorIndex = token.firstIndex(of: "=") else {
+            return nil
+        }
+
+        let rawKey = String(token[..<separatorIndex]).trimmingCharacters(in: .whitespacesAndNewlines)
+        let rawValue = String(token[token.index(after: separatorIndex)...])
+
+        guard !rawKey.isEmpty else {
+            return nil
+        }
+
+        return (key: rawKey.lowercased(), value: normalizeInfoToken(rawValue))
+    }
+
+    private static func normalizeInfoToken(_ token: String) -> String {
+        let trimmed = token.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmed.count >= 2 else {
+            return trimmed
+        }
+
+        if (trimmed.hasPrefix("\"") && trimmed.hasSuffix("\"")) ||
+            (trimmed.hasPrefix("'") && trimmed.hasSuffix("'")) {
+            return String(trimmed.dropFirst().dropLast())
+        }
+
+        return trimmed
+    }
+
+    private static func isFileNameKey(_ key: String) -> Bool {
+        ["file", "filename", "title", "path", "name"].contains(key)
+    }
+
+    private static func looksLikeFileName(_ token: String) -> Bool {
+        let normalized = normalizeInfoToken(token)
+        return normalized.contains(".") || normalized.contains("/") || normalized.contains("\\")
     }
 
     private static let codeBlockRegex = try! NSRegularExpression(
-        pattern: #"<pre><code([^>]*)>(.*?)</code></pre>"#,
+        pattern: #"<pre([^>]*)><code([^>]*)>(.*?)</code></pre>"#,
         options: [.dotMatchesLineSeparators]
     )
+
+    private static let classAttributeRegex = try! NSRegularExpression(
+        pattern: #"\bclass\s*=\s*"([^"]*)""#,
+        options: []
+    )
+
+    private struct CodeBlockMetadata {
+        let language: String?
+        let fileName: String?
+    }
 }
 
 fileprivate struct PreviewThemeColors {

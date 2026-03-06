@@ -7,7 +7,10 @@ protocol MarkdownRenderingEngine {
         _ markdown: String,
         baseFontSize: Double,
         theme: PreviewTheme,
-        syntaxTheme: SyntaxHighlightTheme
+        syntaxTheme: SyntaxHighlightTheme,
+        followThemeLightIdentifier: String,
+        followThemeDarkIdentifier: String,
+        followThemeSepiaIdentifier: String
     ) -> String
 }
 
@@ -23,7 +26,10 @@ struct MarkdownRenderer {
             markdown,
             baseFontSize: Self.defaultBaseFontSize,
             theme: PreviewTheme.defaultTheme,
-            syntaxTheme: SyntaxHighlightTheme.defaultTheme
+            syntaxTheme: SyntaxHighlightTheme.defaultTheme,
+            followThemeLightIdentifier: HighlightJSThemeCatalog.resolvedFollowPreviewLightIdentifier,
+            followThemeDarkIdentifier: HighlightJSThemeCatalog.resolvedFollowPreviewDarkIdentifier,
+            followThemeSepiaIdentifier: HighlightJSThemeCatalog.resolvedFollowPreviewSepiaIdentifier
         )
     }
 
@@ -31,13 +37,19 @@ struct MarkdownRenderer {
         _ markdown: String,
         baseFontSize: Double,
         theme: PreviewTheme = PreviewTheme.defaultTheme,
-        syntaxTheme: SyntaxHighlightTheme = SyntaxHighlightTheme.defaultTheme
+        syntaxTheme: SyntaxHighlightTheme = SyntaxHighlightTheme.defaultTheme,
+        followThemeLightIdentifier: String = HighlightJSThemeCatalog.resolvedFollowPreviewLightIdentifier,
+        followThemeDarkIdentifier: String = HighlightJSThemeCatalog.resolvedFollowPreviewDarkIdentifier,
+        followThemeSepiaIdentifier: String = HighlightJSThemeCatalog.resolvedFollowPreviewSepiaIdentifier
     ) -> String {
         engine.renderHTML(
             markdown,
             baseFontSize: baseFontSize,
             theme: theme,
-            syntaxTheme: syntaxTheme
+            syntaxTheme: syntaxTheme,
+            followThemeLightIdentifier: followThemeLightIdentifier,
+            followThemeDarkIdentifier: followThemeDarkIdentifier,
+            followThemeSepiaIdentifier: followThemeSepiaIdentifier
         )
     }
 
@@ -46,6 +58,9 @@ struct MarkdownRenderer {
         baseFontSize: Double = defaultBaseFontSize,
         theme: PreviewTheme = PreviewTheme.defaultTheme,
         syntaxTheme: SyntaxHighlightTheme = SyntaxHighlightTheme.defaultTheme,
+        followThemeLightIdentifier: String = HighlightJSThemeCatalog.resolvedFollowPreviewLightIdentifier,
+        followThemeDarkIdentifier: String = HighlightJSThemeCatalog.resolvedFollowPreviewDarkIdentifier,
+        followThemeSepiaIdentifier: String = HighlightJSThemeCatalog.resolvedFollowPreviewSepiaIdentifier,
         recentFiles: [URL] = []
     ) -> String {
         var body = "<p>\(escapeHTML(message))</p>"
@@ -75,7 +90,10 @@ struct MarkdownRenderer {
             body,
             baseFontSize: baseFontSize,
             theme: theme,
-            syntaxTheme: syntaxTheme
+            syntaxTheme: syntaxTheme,
+            followThemeLightIdentifier: followThemeLightIdentifier,
+            followThemeDarkIdentifier: followThemeDarkIdentifier,
+            followThemeSepiaIdentifier: followThemeSepiaIdentifier
         )
     }
 
@@ -108,7 +126,10 @@ struct CMarkGFMRenderer: MarkdownRenderingEngine {
         _ markdown: String,
         baseFontSize: Double,
         theme: PreviewTheme,
-        syntaxTheme: SyntaxHighlightTheme
+        syntaxTheme: SyntaxHighlightTheme,
+        followThemeLightIdentifier: String,
+        followThemeDarkIdentifier: String,
+        followThemeSepiaIdentifier: String
     ) -> String {
         let codeBlockMetadata = CodeFenceMetadataParser.extract(from: markdown)
 
@@ -122,7 +143,10 @@ struct CMarkGFMRenderer: MarkdownRenderingEngine {
                 numberedFallback,
                 baseFontSize: baseFontSize,
                 theme: theme,
-                syntaxTheme: syntaxTheme
+                syntaxTheme: syntaxTheme,
+                followThemeLightIdentifier: followThemeLightIdentifier,
+                followThemeDarkIdentifier: followThemeDarkIdentifier,
+                followThemeSepiaIdentifier: followThemeSepiaIdentifier
             )
         }
 
@@ -131,7 +155,10 @@ struct CMarkGFMRenderer: MarkdownRenderingEngine {
             numberedHTMLBody,
             baseFontSize: baseFontSize,
             theme: theme,
-            syntaxTheme: syntaxTheme
+            syntaxTheme: syntaxTheme,
+            followThemeLightIdentifier: followThemeLightIdentifier,
+            followThemeDarkIdentifier: followThemeDarkIdentifier,
+            followThemeSepiaIdentifier: followThemeSepiaIdentifier
         )
     }
 
@@ -186,7 +213,10 @@ struct CMarkGFMRenderer: MarkdownRenderingEngine {
         _ htmlBody: String,
         baseFontSize: Double = MarkdownRenderer.defaultBaseFontSize,
         theme: PreviewTheme = PreviewTheme.defaultTheme,
-        syntaxTheme: SyntaxHighlightTheme = SyntaxHighlightTheme.defaultTheme
+        syntaxTheme: SyntaxHighlightTheme = SyntaxHighlightTheme.defaultTheme,
+        followThemeLightIdentifier: String = HighlightJSThemeCatalog.resolvedFollowPreviewLightIdentifier,
+        followThemeDarkIdentifier: String = HighlightJSThemeCatalog.resolvedFollowPreviewDarkIdentifier,
+        followThemeSepiaIdentifier: String = HighlightJSThemeCatalog.resolvedFollowPreviewSepiaIdentifier
     ) -> String {
         let clampedFontSize = min(max(baseFontSize, 12), 30)
         let fontSizeValue = cssPixelValue(clampedFontSize)
@@ -195,7 +225,10 @@ struct CMarkGFMRenderer: MarkdownRenderingEngine {
         let colorScheme = theme.colorScheme
         let syntaxThemeCSS = HighlightJSSupport.syntaxThemeCSS(
             for: syntaxTheme,
-            previewTheme: theme
+            previewTheme: theme,
+            followThemeLightIdentifier: followThemeLightIdentifier,
+            followThemeDarkIdentifier: followThemeDarkIdentifier,
+            followThemeSepiaIdentifier: followThemeSepiaIdentifier
         )
 
         return """

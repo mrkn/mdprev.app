@@ -235,6 +235,50 @@ final class MarkdownRendererTests: XCTestCase {
         XCTAssertFalse(output.contains("mdprev-hljs-theme:github */"))
     }
 
+    func testRendererFollowPreviewSyntaxThemeUsesConfiguredThemes() {
+        let renderer = MarkdownRenderer()
+        let markdown = """
+        ```swift
+        let a = 1
+        ```
+        """
+
+        let output = renderer.renderHTML(
+            markdown,
+            baseFontSize: 16,
+            theme: .system,
+            syntaxTheme: .followPreview,
+            followThemeLightIdentifier: SyntaxHighlightTheme.xcode.rawValue,
+            followThemeDarkIdentifier: SyntaxHighlightTheme.atomOneDark.rawValue
+        )
+
+        XCTAssertTrue(output.contains("mdprev-hljs-theme:xcode"))
+        XCTAssertTrue(output.contains("mdprev-hljs-theme:atom-one-dark"))
+        XCTAssertFalse(output.contains("mdprev-hljs-theme:github-dark"))
+    }
+
+    func testRendererFollowPreviewSyntaxThemeUsesConfiguredSepiaTheme() {
+        let renderer = MarkdownRenderer()
+        let markdown = """
+        ```swift
+        let a = 1
+        ```
+        """
+
+        let output = renderer.renderHTML(
+            markdown,
+            baseFontSize: 16,
+            theme: .sepia,
+            syntaxTheme: .followPreview,
+            followThemeLightIdentifier: SyntaxHighlightTheme.github.rawValue,
+            followThemeDarkIdentifier: SyntaxHighlightTheme.githubDark.rawValue,
+            followThemeSepiaIdentifier: SyntaxHighlightTheme.xcode.rawValue
+        )
+
+        XCTAssertTrue(output.contains("mdprev-hljs-theme:xcode"))
+        XCTAssertFalse(output.contains("mdprev-hljs-theme:github-dark"))
+    }
+
     func testRendererDoesNotInsertNewlineTextNodesBetweenCodeLines() {
         let renderer = MarkdownRenderer()
         let markdown = """

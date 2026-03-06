@@ -57,6 +57,7 @@ final class AppModel: ObservableObject {
     private let renderer: MarkdownRenderer
     private let fileOpenService: any FileOpenServicing
     private let externalURLService: any ExternalURLServicing
+    private let syntaxHighlightSettingsStore: SyntaxHighlightSettingsStore
     private let userDefaults: UserDefaults
     private let recentFilesStore: RecentFilesStore
     private var initialWindowOrigin: CGPoint?
@@ -65,11 +66,13 @@ final class AppModel: ObservableObject {
     private let windowBehaviorController = WindowBehaviorController()
     private var windowCloseObserver: NSObjectProtocol?
     private var recentFilesObserver: AnyCancellable?
+    private var syntaxHighlightSettingsObserver: AnyCancellable?
 
     init(
         renderer: MarkdownRenderer = MarkdownRenderer(),
         fileOpenService: any FileOpenServicing = FileOpenService(),
         externalURLService: any ExternalURLServicing = ExternalURLService(),
+        syntaxHighlightSettingsStore: SyntaxHighlightSettingsStore = SyntaxHighlightSettingsStore(),
         userDefaults: UserDefaults = .standard,
         recentFilesStore: RecentFilesStore = RecentFilesStore(),
         initialFileURL: URL? = nil,
@@ -78,6 +81,7 @@ final class AppModel: ObservableObject {
         self.renderer = renderer
         self.fileOpenService = fileOpenService
         self.externalURLService = externalURLService
+        self.syntaxHighlightSettingsStore = syntaxHighlightSettingsStore
         self.userDefaults = userDefaults
         self.recentFilesStore = recentFilesStore
         self.initialWindowOrigin = initialWindowOrigin
@@ -104,10 +108,14 @@ final class AppModel: ObservableObject {
             baseFontSize: initialBaseFontSize,
             theme: initialPreviewTheme,
             syntaxTheme: initialSyntaxTheme,
+            followThemeLightIdentifier: syntaxHighlightSettingsStore.followThemeLightIdentifier,
+            followThemeDarkIdentifier: syntaxHighlightSettingsStore.followThemeDarkIdentifier,
+            followThemeSepiaIdentifier: syntaxHighlightSettingsStore.effectiveFollowThemeSepiaIdentifier,
             recentFiles: recentFilesStore.fileURLs
         )
 
         observeRecentFiles()
+        observeSyntaxHighlightSettings()
 
         if let initialFileURL {
             openFile(initialFileURL)
@@ -129,6 +137,7 @@ final class AppModel: ObservableObject {
     func openFile(_ fileURL: URL) {
         let normalizedFileURL = fileURL.standardizedFileURL
         selectedFileURL = normalizedFileURL
+        updateWindowTitle()
         reload()
         configureWatcher()
 
@@ -148,6 +157,9 @@ final class AppModel: ObservableObject {
                 baseFontSize: baseFontSize,
                 theme: previewTheme,
                 syntaxTheme: syntaxHighlightTheme,
+                followThemeLightIdentifier: followThemeLightIdentifier,
+                followThemeDarkIdentifier: followThemeDarkIdentifier,
+                followThemeSepiaIdentifier: followThemeSepiaIdentifier,
                 recentFiles: recentFilesStore.fileURLs
             )
             lastReloadDate = nil
@@ -207,11 +219,16 @@ final class AppModel: ObservableObject {
         attachedWindow = window
         windowBehaviorController.attach(window: window, preferredInitialOrigin: initialWindowOrigin)
         initialWindowOrigin = nil
+        updateWindowTitle()
         observeWindowClose(for: window)
     }
 
     var windowFrame: CGRect? {
         attachedWindow?.frame
+    }
+
+    var windowTitle: String {
+        selectedFileURL?.lastPathComponent ?? Self.defaultWindowTitle
     }
 
     var isPreferredAppOpenFileConsumer: Bool {
@@ -258,6 +275,9 @@ final class AppModel: ObservableObject {
                 baseFontSize: baseFontSize,
                 theme: previewTheme,
                 syntaxTheme: syntaxHighlightTheme,
+                followThemeLightIdentifier: followThemeLightIdentifier,
+                followThemeDarkIdentifier: followThemeDarkIdentifier,
+                followThemeSepiaIdentifier: followThemeSepiaIdentifier,
                 recentFiles: recentFilesStore.fileURLs
             )
             statusMessage = "No file selected."
@@ -271,7 +291,10 @@ final class AppModel: ObservableObject {
                 markdown,
                 baseFontSize: baseFontSize,
                 theme: previewTheme,
-                syntaxTheme: syntaxHighlightTheme
+                syntaxTheme: syntaxHighlightTheme,
+                followThemeLightIdentifier: followThemeLightIdentifier,
+                followThemeDarkIdentifier: followThemeDarkIdentifier,
+                followThemeSepiaIdentifier: followThemeSepiaIdentifier
             )
             statusMessage = "Previewing \(fileURL.lastPathComponent)"
             lastReloadDate = Date()
@@ -280,7 +303,10 @@ final class AppModel: ObservableObject {
                 "Failed to load file.",
                 baseFontSize: baseFontSize,
                 theme: previewTheme,
-                syntaxTheme: syntaxHighlightTheme
+                syntaxTheme: syntaxHighlightTheme,
+                followThemeLightIdentifier: followThemeLightIdentifier,
+                followThemeDarkIdentifier: followThemeDarkIdentifier,
+                followThemeSepiaIdentifier: followThemeSepiaIdentifier
             )
             statusMessage = "Could not read \(fileURL.lastPathComponent): \(error.localizedDescription)"
         }
@@ -311,6 +337,7 @@ final class AppModel: ObservableObject {
     private static let previewThemeDefaultsKey = "preview.theme"
     private static let syntaxThemeDefaultsKey = "preview.syntaxTheme"
     private static let noFileSelectedMessage = "Open a Markdown file to start previewing."
+    private static let defaultWindowTitle = "mdprev"
 
     private static func clampBaseFontSize(_ value: Double) -> Double {
         min(max(value, baseFontSizeRange.lowerBound), baseFontSizeRange.upperBound)
@@ -354,5 +381,48 @@ final class AppModel: ObservableObject {
                 self.reload()
             }
         }
+    }
+
+    private func observeSyntaxHighlightSettings() {
+        syntaxHighlightSettingsObserver = Publishers.CombineLatest4(
+            syntaxHighlightSettingsStore.$followThemeLightIdentifier,
+            syntaxHighlightSettingsStore.$followThemeDarkIdentifier,
+            syntaxHighlightSettingsStore.$followThemeSepiaMode,
+            syntaxHighlightSettingsStore.$followThemeSepiaIdentifier
+        ).sink { [weak self] _, _, _, _ in
+            guard let self else {
+                return
+            }
+
+            if self.syntaxHighlightTheme.isFollowPreview {
+                self.reload()
+            }
+        }
+    }
+
+    private func updateWindowTitle() {
+        guard let attachedWindow else {
+            return
+        }
+
+        attachedWindow.title = windowTitle
+
+        if let selectedFileURL {
+            attachedWindow.representedURL = selectedFileURL
+        } else {
+            attachedWindow.representedURL = nil
+        }
+    }
+
+    private var followThemeLightIdentifier: String {
+        syntaxHighlightSettingsStore.followThemeLightIdentifier
+    }
+
+    private var followThemeDarkIdentifier: String {
+        syntaxHighlightSettingsStore.followThemeDarkIdentifier
+    }
+
+    private var followThemeSepiaIdentifier: String {
+        syntaxHighlightSettingsStore.effectiveFollowThemeSepiaIdentifier
     }
 }

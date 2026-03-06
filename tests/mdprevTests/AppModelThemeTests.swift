@@ -54,6 +54,7 @@ final class AppModelThemeTests: XCTestCase {
         )
 
         return AppModel(
+            syntaxHighlightSettingsStore: SyntaxHighlightSettingsStore(userDefaults: defaults),
             userDefaults: defaults,
             recentFilesStore: store
         )

@@ -45,9 +45,15 @@ private struct PreviewWindowRootView: View {
     @StateObject private var model: AppModel
     @Environment(\.openWindow) private var openWindow
 
-    init(initialFileURL: URL?, initialWindowOrigin: CGPoint?, recentFilesStore: RecentFilesStore) {
+    init(
+        initialFileURL: URL?,
+        initialWindowOrigin: CGPoint?,
+        recentFilesStore: RecentFilesStore,
+        syntaxHighlightSettingsStore: SyntaxHighlightSettingsStore
+    ) {
         _model = StateObject(
             wrappedValue: AppModel(
+                syntaxHighlightSettingsStore: syntaxHighlightSettingsStore,
                 recentFilesStore: recentFilesStore,
                 initialFileURL: initialFileURL,
                 initialWindowOrigin: initialWindowOrigin
@@ -311,13 +317,15 @@ private struct MDPrevCommands: Commands {
 struct MDPrevApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @StateObject private var recentFilesStore = RecentFilesStore()
+    @StateObject private var syntaxHighlightSettingsStore = SyntaxHighlightSettingsStore()
 
     var body: some Scene {
         WindowGroup {
             PreviewWindowRootView(
                 initialFileURL: nil,
                 initialWindowOrigin: nil,
-                recentFilesStore: recentFilesStore
+                recentFilesStore: recentFilesStore,
+                syntaxHighlightSettingsStore: syntaxHighlightSettingsStore
             )
         }
         .windowStyle(.titleBar)
@@ -329,10 +337,15 @@ struct MDPrevApp: App {
             PreviewWindowRootView(
                 initialFileURL: payload?.fileURL,
                 initialWindowOrigin: payload?.preferredWindowOrigin,
-                recentFilesStore: recentFilesStore
+                recentFilesStore: recentFilesStore,
+                syntaxHighlightSettingsStore: syntaxHighlightSettingsStore
             )
         }
         .windowStyle(.titleBar)
+
+        Settings {
+            SyntaxHighlightSettingsView(settingsStore: syntaxHighlightSettingsStore)
+        }
     }
 }
 

@@ -74,6 +74,7 @@ final class AppModelFileOpenServiceTests: XCTestCase {
             AppModel(
                 fileOpenService: fileOpenService,
                 externalURLService: StubExternalURLService(),
+                syntaxHighlightSettingsStore: SyntaxHighlightSettingsStore(userDefaults: userDefaults),
                 userDefaults: userDefaults,
                 recentFilesStore: recentFilesStore
             )

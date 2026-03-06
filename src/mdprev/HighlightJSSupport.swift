@@ -20,33 +20,59 @@ enum HighlightJSSupport {
 
     static func syntaxThemeCSS(
         for theme: SyntaxHighlightTheme,
-        previewTheme: PreviewTheme
+        previewTheme: PreviewTheme,
+        followThemeLightIdentifier: String = HighlightJSThemeCatalog.resolvedFollowPreviewLightIdentifier,
+        followThemeDarkIdentifier: String = HighlightJSThemeCatalog.resolvedFollowPreviewDarkIdentifier,
+        followThemeSepiaIdentifier: String = HighlightJSThemeCatalog.resolvedFollowPreviewSepiaIdentifier
     ) -> String {
         if theme.isDisabled {
             return ""
         }
 
         if theme.isFollowPreview {
-            return followPreviewThemeCSS(previewTheme)
+            return followPreviewThemeCSS(
+                previewTheme,
+                lightIdentifier: followThemeLightIdentifier,
+                darkIdentifier: followThemeDarkIdentifier,
+                sepiaIdentifier: followThemeSepiaIdentifier
+            )
         }
 
         return singleThemeCSS(themeIdentifier: theme.rawValue)
     }
 
-    private static func followPreviewThemeCSS(_ previewTheme: PreviewTheme) -> String {
-        let lightIdentifier = HighlightJSThemeCatalog.resolvedFollowPreviewLightIdentifier
-        let darkIdentifier = HighlightJSThemeCatalog.resolvedFollowPreviewDarkIdentifier
+    private static func followPreviewThemeCSS(
+        _ previewTheme: PreviewTheme,
+        lightIdentifier: String,
+        darkIdentifier: String,
+        sepiaIdentifier: String
+    ) -> String {
+        let resolvedLightIdentifier = HighlightJSThemeCatalog.resolvedThemeIdentifier(
+            primary: lightIdentifier,
+            fallback: darkIdentifier
+        )
+        let resolvedDarkIdentifier = HighlightJSThemeCatalog.resolvedThemeIdentifier(
+            primary: darkIdentifier,
+            fallback: resolvedLightIdentifier
+        )
+        let resolvedSepiaIdentifier = HighlightJSThemeCatalog.resolvedThemeIdentifier(
+            primary: sepiaIdentifier,
+            fallback: resolvedLightIdentifier
+        )
 
         switch previewTheme {
         case .dark:
-            return singleThemeCSS(themeIdentifier: darkIdentifier)
+            return singleThemeCSS(themeIdentifier: resolvedDarkIdentifier)
 
-        case .light, .sepia:
-            return singleThemeCSS(themeIdentifier: lightIdentifier)
+        case .light:
+            return singleThemeCSS(themeIdentifier: resolvedLightIdentifier)
+
+        case .sepia:
+            return singleThemeCSS(themeIdentifier: resolvedSepiaIdentifier)
 
         case .system:
-            let lightCSS = themedCSS(themeIdentifier: lightIdentifier)
-            let darkCSS = themedCSS(themeIdentifier: darkIdentifier)
+            let lightCSS = themedCSS(themeIdentifier: resolvedLightIdentifier)
+            let darkCSS = themedCSS(themeIdentifier: resolvedDarkIdentifier)
 
             return """
                   \(lightCSS)

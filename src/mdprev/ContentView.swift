@@ -62,6 +62,7 @@ struct ContentView: View {
                 model.attachWindow(window)
             }
         )
+        .navigationTitle(model.windowTitle)
     }
 
     private var toolbar: some View {

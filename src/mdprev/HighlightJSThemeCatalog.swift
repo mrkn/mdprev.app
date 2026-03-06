@@ -6,8 +6,9 @@ struct HighlightJSThemeDefinition: Hashable {
 }
 
 enum HighlightJSThemeCatalog {
-    static let followPreviewLightIdentifier = "github"
-    static let followPreviewDarkIdentifier = "github-dark"
+    static let defaultFollowThemeLightIdentifier = "github"
+    static let defaultFollowThemeDarkIdentifier = "github-dark"
+    static let defaultFollowThemeSepiaIdentifier = defaultFollowThemeLightIdentifier
 
     static var availableThemes: [HighlightJSThemeDefinition] {
         themeDefinitions
@@ -30,11 +31,28 @@ enum HighlightJSThemeCatalog {
     }
 
     static var resolvedFollowPreviewLightIdentifier: String {
-        preferredIdentifier(primary: followPreviewLightIdentifier, fallback: followPreviewDarkIdentifier)
+        resolvedThemeIdentifier(
+            primary: defaultFollowThemeLightIdentifier,
+            fallback: defaultFollowThemeDarkIdentifier
+        )
     }
 
     static var resolvedFollowPreviewDarkIdentifier: String {
-        preferredIdentifier(primary: followPreviewDarkIdentifier, fallback: followPreviewLightIdentifier)
+        resolvedThemeIdentifier(
+            primary: defaultFollowThemeDarkIdentifier,
+            fallback: defaultFollowThemeLightIdentifier
+        )
+    }
+
+    static var resolvedFollowPreviewSepiaIdentifier: String {
+        resolvedThemeIdentifier(
+            primary: defaultFollowThemeSepiaIdentifier,
+            fallback: defaultFollowThemeLightIdentifier
+        )
+    }
+
+    static func resolvedThemeIdentifier(primary: String, fallback: String) -> String {
+        preferredIdentifier(primary: primary, fallback: fallback)
     }
 
     private static let themeEntriesByIdentifier: [String: ThemeEntry] = loadThemeEntriesByIdentifier()

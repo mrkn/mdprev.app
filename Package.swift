@@ -8,6 +8,7 @@ let package = Package(
     ],
     products: [
         .library(name: "MDPrevRendering", targets: ["MDPrevRendering"]),
+        .executable(name: "MDPrevQuickLookExtension", targets: ["MDPrevQuickLookExtension"]),
         .executable(name: "mdprev", targets: ["mdprev"])
     ],
     dependencies: [
@@ -31,6 +32,13 @@ let package = Package(
                 "MDPrevRendering"
             ],
             path: "src/mdprev"
+        ),
+        .executableTarget(
+            name: "MDPrevQuickLookExtension",
+            dependencies: [
+                "MDPrevRendering"
+            ],
+            path: "src/MDPrevQuickLookExtension"
         ),
         .testTarget(
             name: "mdprevTests",

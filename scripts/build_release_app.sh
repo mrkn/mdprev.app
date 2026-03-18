@@ -2,7 +2,10 @@
 set -euo pipefail
 
 APP_NAME="mdprev"
+QUICKLOOK_EXTENSION_NAME="MDPrevQuickLookExtension"
+QUICKLOOK_BUNDLE_NAME="mdprevQuickLook"
 BUNDLE_ID="io.github.mrkn.mdprev"
+QUICKLOOK_BUNDLE_ID="${BUNDLE_ID}.quicklook-preview"
 APP_VERSION="0.1.0"
 BUILD_NUMBER="1"
 MIN_SYSTEM_VERSION="13.0"
@@ -13,6 +16,11 @@ APP_BUNDLE_PATH="${PROJECT_ROOT}/${OUT_DIR}/${APP_NAME}.app"
 CONTENTS_PATH="${APP_BUNDLE_PATH}/Contents"
 MACOS_PATH="${CONTENTS_PATH}/MacOS"
 RESOURCES_PATH="${CONTENTS_PATH}/Resources"
+PLUGINS_PATH="${CONTENTS_PATH}/PlugIns"
+QUICKLOOK_APPEX_PATH="${PLUGINS_PATH}/${QUICKLOOK_BUNDLE_NAME}.appex"
+QUICKLOOK_CONTENTS_PATH="${QUICKLOOK_APPEX_PATH}/Contents"
+QUICKLOOK_MACOS_PATH="${QUICKLOOK_CONTENTS_PATH}/MacOS"
+QUICKLOOK_RESOURCES_PATH="${QUICKLOOK_CONTENTS_PATH}/Resources"
 
 ICON_SOURCE_ICNS="${PROJECT_ROOT}/assets/app-icon/mdprev.icns"
 ICON_SOURCE_ICONSET="${PROJECT_ROOT}/assets/app-icon/AppIcon.iconset"
@@ -32,14 +40,31 @@ if [[ -z "${BIN_PATH}" ]]; then
   exit 1
 fi
 
+QUICKLOOK_BIN_PATH="$(find .build -type f -path "*/release/${QUICKLOOK_EXTENSION_NAME}" | head -n 1)"
+if [[ -z "${QUICKLOOK_BIN_PATH}" ]]; then
+  echo "Release binary not found for ${QUICKLOOK_EXTENSION_NAME}" >&2
+  exit 1
+fi
+
 rm -rf "${APP_BUNDLE_PATH}"
-mkdir -p "${MACOS_PATH}" "${RESOURCES_PATH}"
+mkdir -p "${MACOS_PATH}" "${RESOURCES_PATH}" "${QUICKLOOK_MACOS_PATH}" "${QUICKLOOK_RESOURCES_PATH}"
 cp "${BIN_PATH}" "${MACOS_PATH}/${APP_NAME}"
 chmod +x "${MACOS_PATH}/${APP_NAME}"
+cp "${QUICKLOOK_BIN_PATH}" "${QUICKLOOK_MACOS_PATH}/${QUICKLOOK_EXTENSION_NAME}"
+chmod +x "${QUICKLOOK_MACOS_PATH}/${QUICKLOOK_EXTENSION_NAME}"
 
 while IFS= read -r -d '' bundle_path; do
   cp -R "${bundle_path}" "${RESOURCES_PATH}/"
 done < <(find .build -type d -path "*/release/${APP_NAME}_*.bundle" -print0)
+
+while IFS= read -r -d '' bundle_path; do
+  cp -R "${bundle_path}" "${QUICKLOOK_RESOURCES_PATH}/"
+done < <(
+  find .build -type d \
+    \( -path "*/release/${QUICKLOOK_EXTENSION_NAME}_*.bundle" \
+    -o -path "*/release/${APP_NAME}_MDPrevRendering.bundle" \) \
+    -print0
+)
 
 HAS_ICON="false"
 if [[ -f "${ICON_SOURCE_ICNS}" ]]; then
@@ -166,6 +191,58 @@ else
 </dict>
 </plist>
 PLIST
+fi
+
+QUICKLOOK_INFO_PLIST_PATH="${QUICKLOOK_CONTENTS_PATH}/Info.plist"
+cat > "${QUICKLOOK_INFO_PLIST_PATH}" <<PLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>CFBundleDevelopmentRegion</key>
+  <string>en</string>
+  <key>CFBundleDisplayName</key>
+  <string>${QUICKLOOK_BUNDLE_NAME}</string>
+  <key>CFBundleExecutable</key>
+  <string>${QUICKLOOK_EXTENSION_NAME}</string>
+  <key>CFBundleIdentifier</key>
+  <string>${QUICKLOOK_BUNDLE_ID}</string>
+  <key>CFBundleInfoDictionaryVersion</key>
+  <string>6.0</string>
+  <key>CFBundleName</key>
+  <string>${QUICKLOOK_BUNDLE_NAME}</string>
+  <key>CFBundlePackageType</key>
+  <string>XPC!</string>
+  <key>CFBundleShortVersionString</key>
+  <string>${APP_VERSION}</string>
+  <key>CFBundleVersion</key>
+  <string>${BUILD_NUMBER}</string>
+  <key>LSMinimumSystemVersion</key>
+  <string>${MIN_SYSTEM_VERSION}</string>
+  <key>NSExtension</key>
+  <dict>
+    <key>NSExtensionAttributes</key>
+    <dict>
+      <key>QLIsDataBasedPreview</key>
+      <true/>
+      <key>QLSupportedContentTypes</key>
+      <array>
+        <string>net.daringfireball.markdown</string>
+      </array>
+      <key>QLSupportsSearchableItems</key>
+      <false/>
+    </dict>
+    <key>NSExtensionPointIdentifier</key>
+    <string>com.apple.quicklook.preview</string>
+    <key>NSExtensionPrincipalClass</key>
+    <string>${QUICKLOOK_EXTENSION_NAME}.QuickLookPreviewProvider</string>
+  </dict>
+</dict>
+</plist>
+PLIST
+
+if command -v plutil >/dev/null 2>&1; then
+  plutil -lint "${QUICKLOOK_INFO_PLIST_PATH}" >/dev/null
 fi
 
 if command -v plutil >/dev/null 2>&1; then

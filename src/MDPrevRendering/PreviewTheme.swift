@@ -1,14 +1,14 @@
 import Foundation
 
-enum PreviewTheme: String, CaseIterable, Codable {
+public enum PreviewTheme: String, CaseIterable, Codable, Sendable {
     case system
     case light
     case dark
     case sepia
 
-    static let defaultTheme: PreviewTheme = .system
+    public static let defaultTheme: PreviewTheme = .system
 
-    init(storedValue: String?) {
+    public init(storedValue: String?) {
         if let storedValue, let value = PreviewTheme(rawValue: storedValue) {
             self = value
         } else {
@@ -16,7 +16,7 @@ enum PreviewTheme: String, CaseIterable, Codable {
         }
     }
 
-    var displayName: String {
+    public var displayName: String {
         switch self {
         case .system:
             return "System"

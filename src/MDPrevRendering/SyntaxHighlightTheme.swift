@@ -1,28 +1,28 @@
 import Foundation
 
-struct SyntaxHighlightTheme: Hashable, Codable {
-    let rawValue: String
+public struct SyntaxHighlightTheme: Hashable, Codable, Sendable {
+    public let rawValue: String
 
-    static let disabled = SyntaxHighlightTheme(rawValue: "disabled")
-    static let followPreview = SyntaxHighlightTheme(rawValue: "follow-preview")
-    static let github = SyntaxHighlightTheme(rawValue: "github")
-    static let githubDark = SyntaxHighlightTheme(rawValue: "github-dark")
-    static let atomOneDark = SyntaxHighlightTheme(rawValue: "atom-one-dark")
-    static let xcode = SyntaxHighlightTheme(rawValue: "xcode")
+    public static let disabled = SyntaxHighlightTheme(rawValue: "disabled")
+    public static let followPreview = SyntaxHighlightTheme(rawValue: "follow-preview")
+    public static let github = SyntaxHighlightTheme(rawValue: "github")
+    public static let githubDark = SyntaxHighlightTheme(rawValue: "github-dark")
+    public static let atomOneDark = SyntaxHighlightTheme(rawValue: "atom-one-dark")
+    public static let xcode = SyntaxHighlightTheme(rawValue: "xcode")
 
-    static let defaultTheme: SyntaxHighlightTheme = .followPreview
+    public static let defaultTheme: SyntaxHighlightTheme = .followPreview
 
-    static var allCases: [SyntaxHighlightTheme] {
+    public static var allCases: [SyntaxHighlightTheme] {
         [disabled, followPreview] + HighlightJSThemeCatalog.availableThemes.map { theme in
             SyntaxHighlightTheme(rawValue: theme.identifier)
         }
     }
 
-    init(rawValue: String) {
+    public init(rawValue: String) {
         self.rawValue = rawValue
     }
 
-    init(storedValue: String?) {
+    public init(storedValue: String?) {
         guard let storedValue else {
             self = Self.defaultTheme
             return
@@ -31,7 +31,7 @@ struct SyntaxHighlightTheme: Hashable, Codable {
         self = Self.validated(rawValue: storedValue)
     }
 
-    var displayName: String {
+    public var displayName: String {
         if self == .disabled {
             return "Disabled"
         }
@@ -43,11 +43,11 @@ struct SyntaxHighlightTheme: Hashable, Codable {
         return HighlightJSThemeCatalog.displayName(for: rawValue)
     }
 
-    var isDisabled: Bool {
+    public var isDisabled: Bool {
         self == .disabled
     }
 
-    var isFollowPreview: Bool {
+    public var isFollowPreview: Bool {
         self == .followPreview
     }
 

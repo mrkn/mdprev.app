@@ -1,6 +1,7 @@
 import AppKit
 import Combine
 import SwiftUI
+import MDPrevRendering
 
 struct PreviewWindowPayload: Hashable, Codable {
     private static let cascadeOffsetX: CGFloat = 24

@@ -1,5 +1,6 @@
 import Foundation
 import XCTest
+import MDPrevRendering
 @testable import mdprev
 
 @MainActor

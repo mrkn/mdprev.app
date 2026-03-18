@@ -1,4 +1,5 @@
 import XCTest
+import MDPrevRendering
 @testable import mdprev
 
 final class SyntaxHighlightThemeMenuModelTests: XCTestCase {

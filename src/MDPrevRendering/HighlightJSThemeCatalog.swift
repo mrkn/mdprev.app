@@ -1,28 +1,28 @@
 import Foundation
 
-struct HighlightJSThemeDefinition: Hashable {
-    let identifier: String
-    let displayName: String
+public struct HighlightJSThemeDefinition: Hashable, Sendable {
+    public let identifier: String
+    public let displayName: String
 }
 
-enum HighlightJSThemeCatalog {
-    static let defaultFollowThemeLightIdentifier = "github"
-    static let defaultFollowThemeDarkIdentifier = "github-dark"
-    static let defaultFollowThemeSepiaIdentifier = defaultFollowThemeLightIdentifier
+public enum HighlightJSThemeCatalog {
+    public static let defaultFollowThemeLightIdentifier = "github"
+    public static let defaultFollowThemeDarkIdentifier = "github-dark"
+    public static let defaultFollowThemeSepiaIdentifier = defaultFollowThemeLightIdentifier
 
-    static var availableThemes: [HighlightJSThemeDefinition] {
+    public static var availableThemes: [HighlightJSThemeDefinition] {
         themeDefinitions
     }
 
-    static func contains(identifier: String) -> Bool {
+    public static func contains(identifier: String) -> Bool {
         themeEntriesByIdentifier[identifier] != nil
     }
 
-    static func displayName(for identifier: String) -> String {
+    public static func displayName(for identifier: String) -> String {
         themeEntriesByIdentifier[identifier]?.definition.displayName ?? humanizedDisplayName(for: identifier)
     }
 
-    static func css(for identifier: String) -> String? {
+    public static func css(for identifier: String) -> String? {
         guard let fileURL = themeEntriesByIdentifier[identifier]?.fileURL else {
             return nil
         }
@@ -30,28 +30,28 @@ enum HighlightJSThemeCatalog {
         return cssCache.css(for: identifier, fileURL: fileURL)
     }
 
-    static var resolvedFollowPreviewLightIdentifier: String {
+    public static var resolvedFollowPreviewLightIdentifier: String {
         resolvedThemeIdentifier(
             primary: defaultFollowThemeLightIdentifier,
             fallback: defaultFollowThemeDarkIdentifier
         )
     }
 
-    static var resolvedFollowPreviewDarkIdentifier: String {
+    public static var resolvedFollowPreviewDarkIdentifier: String {
         resolvedThemeIdentifier(
             primary: defaultFollowThemeDarkIdentifier,
             fallback: defaultFollowThemeLightIdentifier
         )
     }
 
-    static var resolvedFollowPreviewSepiaIdentifier: String {
+    public static var resolvedFollowPreviewSepiaIdentifier: String {
         resolvedThemeIdentifier(
             primary: defaultFollowThemeSepiaIdentifier,
             fallback: defaultFollowThemeLightIdentifier
         )
     }
 
-    static func resolvedThemeIdentifier(primary: String, fallback: String) -> String {
+    public static func resolvedThemeIdentifier(primary: String, fallback: String) -> String {
         preferredIdentifier(primary: primary, fallback: fallback)
     }
 
@@ -160,7 +160,7 @@ enum HighlightJSThemeCatalog {
         return word.prefix(1).uppercased() + word.dropFirst()
     }
 
-    private struct ThemeEntry {
+    private struct ThemeEntry: Sendable {
         let definition: HighlightJSThemeDefinition
         let fileURL: URL
     }

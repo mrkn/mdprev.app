@@ -1,6 +1,7 @@
 import AppKit
 import Combine
 import Foundation
+import MDPrevRendering
 
 @MainActor
 final class AppModel: ObservableObject {

@@ -1,4 +1,5 @@
 import Foundation
+import MDPrevRendering
 
 struct SyntaxHighlightThemeMenuModel {
     let sections: [Section]

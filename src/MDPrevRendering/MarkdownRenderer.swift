@@ -2,7 +2,7 @@ import Foundation
 import cmark_gfm
 import cmark_gfm_extensions
 
-protocol MarkdownRenderingEngine {
+public protocol MarkdownRenderingEngine {
     func renderHTML(
         _ markdown: String,
         baseFontSize: Double,
@@ -14,14 +14,14 @@ protocol MarkdownRenderingEngine {
     ) -> String
 }
 
-struct MarkdownRenderer {
+public struct MarkdownRenderer {
     private let engine: any MarkdownRenderingEngine
 
-    init(engine: any MarkdownRenderingEngine = CMarkGFMRenderer()) {
+    public init(engine: any MarkdownRenderingEngine = CMarkGFMRenderer()) {
         self.engine = engine
     }
 
-    func renderHTML(_ markdown: String) -> String {
+    public func renderHTML(_ markdown: String) -> String {
         renderHTML(
             markdown,
             baseFontSize: Self.defaultBaseFontSize,
@@ -33,7 +33,7 @@ struct MarkdownRenderer {
         )
     }
 
-    func renderHTML(
+    public func renderHTML(
         _ markdown: String,
         baseFontSize: Double,
         theme: PreviewTheme = PreviewTheme.defaultTheme,
@@ -53,7 +53,7 @@ struct MarkdownRenderer {
         )
     }
 
-    static func placeholderHTML(
+    public static func placeholderHTML(
         _ message: String,
         baseFontSize: Double = defaultBaseFontSize,
         theme: PreviewTheme = PreviewTheme.defaultTheme,
@@ -97,7 +97,7 @@ struct MarkdownRenderer {
         )
     }
 
-    static func escapeHTML(_ text: String) -> String {
+    public static func escapeHTML(_ text: String) -> String {
         var escaped = text
         escaped = escaped.replacingOccurrences(of: "&", with: "&amp;")
         escaped = escaped.replacingOccurrences(of: "<", with: "&lt;")
@@ -106,7 +106,7 @@ struct MarkdownRenderer {
         return escaped
     }
 
-    static let defaultBaseFontSize: Double = 16
+    public static let defaultBaseFontSize: Double = 16
 
     private static func openRecentFileHref(for fileURL: URL) -> String {
         let path = fileURL.standardizedFileURL.path
@@ -121,8 +121,10 @@ struct MarkdownRenderer {
     }
 }
 
-struct CMarkGFMRenderer: MarkdownRenderingEngine {
-    func renderHTML(
+public struct CMarkGFMRenderer: MarkdownRenderingEngine {
+    public init() {}
+
+    public func renderHTML(
         _ markdown: String,
         baseFontSize: Double,
         theme: PreviewTheme,
@@ -162,7 +164,7 @@ struct CMarkGFMRenderer: MarkdownRenderingEngine {
         )
     }
 
-    func renderHTMLBody(_ markdown: String) -> String? {
+    public func renderHTMLBody(_ markdown: String) -> String? {
         cmark_gfm_core_extensions_ensure_registered()
 
         let options = CMARK_OPT_DEFAULT

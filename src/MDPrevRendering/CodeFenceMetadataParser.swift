@@ -1,12 +1,17 @@
 import Foundation
 
-struct CodeFenceMetadata: Equatable {
-    let language: String?
-    let fileName: String?
+public struct CodeFenceMetadata: Equatable, Sendable {
+    public let language: String?
+    public let fileName: String?
+
+    public init(language: String?, fileName: String?) {
+        self.language = language
+        self.fileName = fileName
+    }
 }
 
-enum CodeFenceMetadataParser {
-    static func extract(from markdown: String) -> [CodeFenceMetadata] {
+public enum CodeFenceMetadataParser {
+    public static func extract(from markdown: String) -> [CodeFenceMetadata] {
         let normalizedMarkdown = markdown
             .replacingOccurrences(of: "\r\n", with: "\n")
             .replacingOccurrences(of: "\r", with: "\n")

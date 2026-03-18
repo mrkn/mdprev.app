@@ -1,9 +1,9 @@
 import Foundation
 
-enum HighlightJSSupport {
-    static let bootstrapMarker = "mdprev-highlight-bootstrap-v1"
+public enum HighlightJSSupport {
+    public static let bootstrapMarker = "mdprev-highlight-bootstrap-v1"
 
-    static func inlineScriptTagsHTML(for theme: SyntaxHighlightTheme) -> String {
+    public static func inlineScriptTagsHTML(for theme: SyntaxHighlightTheme) -> String {
         guard !theme.isDisabled else {
             return ""
         }
@@ -18,7 +18,7 @@ enum HighlightJSSupport {
         return scripts.joined(separator: "\n")
     }
 
-    static func syntaxThemeCSS(
+    public static func syntaxThemeCSS(
         for theme: SyntaxHighlightTheme,
         previewTheme: PreviewTheme,
         followThemeLightIdentifier: String = HighlightJSThemeCatalog.resolvedFollowPreviewLightIdentifier,

@@ -1,4 +1,5 @@
 import SwiftUI
+import MDPrevRendering
 
 struct SyntaxHighlightSettingsView: View {
     @ObservedObject var settingsStore: SyntaxHighlightSettingsStore

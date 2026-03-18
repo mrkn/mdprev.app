@@ -7,26 +7,34 @@ let package = Package(
         .macOS(.v13)
     ],
     products: [
+        .library(name: "MDPrevRendering", targets: ["MDPrevRendering"]),
         .executable(name: "mdprev", targets: ["mdprev"])
     ],
     dependencies: [
         .package(url: "https://github.com/swiftlang/swift-cmark.git", branch: "gfm")
     ],
     targets: [
-        .executableTarget(
-            name: "mdprev",
+        .target(
+            name: "MDPrevRendering",
             dependencies: [
                 .product(name: "cmark-gfm", package: "swift-cmark"),
                 .product(name: "cmark-gfm-extensions", package: "swift-cmark")
             ],
-            path: "src/mdprev",
+            path: "src/MDPrevRendering",
             resources: [
                 .process("Resources")
             ]
         ),
+        .executableTarget(
+            name: "mdprev",
+            dependencies: [
+                "MDPrevRendering"
+            ],
+            path: "src/mdprev"
+        ),
         .testTarget(
             name: "mdprevTests",
-            dependencies: ["mdprev"],
+            dependencies: ["mdprev", "MDPrevRendering"],
             path: "tests/mdprevTests"
         )
     ]

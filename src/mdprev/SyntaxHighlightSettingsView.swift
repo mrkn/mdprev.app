@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 import MDPrevRendering
 
@@ -6,6 +7,16 @@ struct SyntaxHighlightSettingsView: View {
 
     var body: some View {
         Form {
+            Section("Quick Look Preview Extension") {
+                Button("Open Quick Look Extension Settings") {
+                    openQuickLookPreviewExtensionSettings()
+                }
+
+                Text("Use System Settings to enable or prioritize the MDPrev Quick Look extension.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
             Section("Follow Theme") {
                 themeSelectionRow(
                     title: "Light Mode Theme",
@@ -43,6 +54,14 @@ struct SyntaxHighlightSettingsView: View {
         .formStyle(.grouped)
         .frame(width: 560, height: 360)
         .padding(16)
+    }
+
+    private func openQuickLookPreviewExtensionSettings() {
+        for url in QuickLookPreviewExtensionSettingsDestination.urls {
+            if NSWorkspace.shared.open(url) {
+                return
+            }
+        }
     }
 
     @ViewBuilder
@@ -103,4 +122,12 @@ struct SyntaxHighlightSettingsView: View {
         }
         return SyntaxHighlightThemeMenuModel(themes: themes)
     }
+}
+
+enum QuickLookPreviewExtensionSettingsDestination {
+    static let urls: [URL] = [
+        URL(string: "x-apple.systempreferences:com.apple.ExtensionsPreferences?extensionPointIdentifier=com.apple.quicklook.preview")!,
+        URL(string: "x-apple.systempreferences:com.apple.ExtensionsPreferences")!,
+        URL(string: "x-apple.systempreferences:com.apple.LoginItems-Settings.extension?ExtensionItems")!
+    ]
 }

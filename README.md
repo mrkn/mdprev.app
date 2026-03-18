@@ -56,4 +56,4 @@ This creates `/Users/mrkn/src/github.com/mrkn/mdprev/dist/mdprev.app`.
 
 ## License
 
-AGPL
+GNU Affero General Public License v3.0. See `LICENSE`.

@@ -22,7 +22,7 @@ final class AppModel: ObservableObject {
                 return
             }
 
-            userDefaults.set(previewTheme.rawValue, forKey: Self.previewThemeDefaultsKey)
+            userDefaults.set(previewTheme.rawValue, forKey: SharedPreviewSettings.previewThemeDefaultsKey)
             reload()
         }
     }
@@ -32,7 +32,7 @@ final class AppModel: ObservableObject {
                 return
             }
 
-            userDefaults.set(syntaxHighlightTheme.rawValue, forKey: Self.syntaxThemeDefaultsKey)
+            userDefaults.set(syntaxHighlightTheme.rawValue, forKey: SharedPreviewSettings.syntaxThemeDefaultsKey)
             reload()
         }
     }
@@ -48,7 +48,7 @@ final class AppModel: ObservableObject {
                 return
             }
 
-            userDefaults.set(baseFontSize, forKey: Self.baseFontSizeDefaultsKey)
+            userDefaults.set(baseFontSize, forKey: SharedPreviewSettings.baseFontSizeDefaultsKey)
             reload()
         }
     }
@@ -74,7 +74,7 @@ final class AppModel: ObservableObject {
         fileOpenService: any FileOpenServicing = FileOpenService(),
         externalURLService: any ExternalURLServicing = ExternalURLService(),
         syntaxHighlightSettingsStore: SyntaxHighlightSettingsStore = SyntaxHighlightSettingsStore(),
-        userDefaults: UserDefaults = .standard,
+        userDefaults: UserDefaults = SharedPreviewSettings.userDefaults(),
         recentFilesStore: RecentFilesStore = RecentFilesStore(),
         initialFileURL: URL? = nil,
         initialWindowOrigin: CGPoint? = nil
@@ -88,16 +88,16 @@ final class AppModel: ObservableObject {
         self.initialWindowOrigin = initialWindowOrigin
 
         let initialBaseFontSize: Double
-        if let storedValue = userDefaults.object(forKey: Self.baseFontSizeDefaultsKey) as? NSNumber {
+        if let storedValue = userDefaults.object(forKey: SharedPreviewSettings.baseFontSizeDefaultsKey) as? NSNumber {
             initialBaseFontSize = Self.clampBaseFontSize(storedValue.doubleValue)
         } else {
             initialBaseFontSize = Self.defaultBaseFontSize
         }
         let initialPreviewTheme = PreviewTheme(
-            storedValue: userDefaults.string(forKey: Self.previewThemeDefaultsKey)
+            storedValue: userDefaults.string(forKey: SharedPreviewSettings.previewThemeDefaultsKey)
         )
         let initialSyntaxTheme = SyntaxHighlightTheme(
-            storedValue: userDefaults.string(forKey: Self.syntaxThemeDefaultsKey)
+            storedValue: userDefaults.string(forKey: SharedPreviewSettings.syntaxThemeDefaultsKey)
         )
 
         self.previewTheme = initialPreviewTheme
@@ -334,9 +334,6 @@ final class AppModel: ObservableObject {
         }
     }
 
-    private static let baseFontSizeDefaultsKey = "preview.baseFontSize"
-    private static let previewThemeDefaultsKey = "preview.theme"
-    private static let syntaxThemeDefaultsKey = "preview.syntaxTheme"
     private static let noFileSelectedMessage = "Open a Markdown file to start previewing."
     private static let defaultWindowTitle = "mdprev"
 

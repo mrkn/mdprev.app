@@ -3,10 +3,6 @@ import MDPrevRendering
 import Quartz
 
 final class QuickLookPreviewProvider: QLPreviewProvider, QLPreviewingController {
-    override init() {
-        super.init()
-    }
-
     func providePreview(for request: QLFilePreviewRequest) async throws -> QLPreviewReply {
         let fileURL = request.fileURL.standardizedFileURL
 
@@ -15,7 +11,18 @@ final class QuickLookPreviewProvider: QLPreviewProvider, QLPreviewingController 
             contentSize: CGSize(width: 900, height: 1200)
         ) { replyToUpdate in
             let markdown = try String(contentsOf: fileURL, encoding: .utf8)
-            let renderedHTML = MarkdownRenderer().renderHTML(markdown)
+            let settings = SharedPreviewSettings.currentValues(
+                userDefaults: SharedPreviewSettings.userDefaults(migrateLegacySettings: false)
+            )
+            let renderedHTML = MarkdownRenderer().renderHTML(
+                markdown,
+                baseFontSize: settings.baseFontSize,
+                theme: settings.previewTheme,
+                syntaxTheme: settings.syntaxHighlightTheme,
+                followThemeLightIdentifier: settings.followThemeLightIdentifier,
+                followThemeDarkIdentifier: settings.followThemeDarkIdentifier,
+                followThemeSepiaIdentifier: settings.followThemeSepiaIdentifier
+            )
             let html = Self.injectBaseURL(fileURL.deletingLastPathComponent(), into: renderedHTML)
             replyToUpdate.stringEncoding = .utf8
             replyToUpdate.title = fileURL.lastPathComponent

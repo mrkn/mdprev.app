@@ -52,7 +52,9 @@ swift run mdprev
 make release-app
 ```
 
-This creates `/Users/mrkn/src/github.com/mrkn/mdprev/dist/mdprev.app`.
+This regenerates `/Users/mrkn/src/github.com/mrkn/mdprev/mdprev.xcodeproj`, builds the
+`mdprev` Xcode scheme in `Release`, and creates
+`/Users/mrkn/src/github.com/mrkn/mdprev/dist/mdprev.app`.
 
 ## License
 

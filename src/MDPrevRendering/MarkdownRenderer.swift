@@ -107,6 +107,7 @@ public struct MarkdownRenderer {
     }
 
     public static let defaultBaseFontSize: Double = 16
+    public static let defaultBaseFontSizeRange: ClosedRange<Double> = 12...30
 
     private static func openRecentFileHref(for fileURL: URL) -> String {
         let path = fileURL.standardizedFileURL.path

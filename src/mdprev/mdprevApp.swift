@@ -351,8 +351,11 @@ struct MDPrevApp: App {
 }
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
+    private let quickLookRegistrationService = QuickLookRegistrationService()
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.regular)
+        quickLookRegistrationService.registerIfPossible()
     }
 
     func application(_ sender: NSApplication, openFile filename: String) -> Bool {

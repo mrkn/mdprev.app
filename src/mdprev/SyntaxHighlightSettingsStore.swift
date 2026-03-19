@@ -2,10 +2,7 @@ import Combine
 import Foundation
 import MDPrevRendering
 
-enum FollowThemeSepiaMode: String, CaseIterable, Codable {
-    case sameAsLight = "same-as-light"
-    case custom = "custom"
-
+extension FollowThemeSepiaMode {
     var displayName: String {
         switch self {
         case .sameAsLight:
@@ -25,13 +22,13 @@ final class SyntaxHighlightSettingsStore: ObservableObject {
 
     private let userDefaults: UserDefaults
 
-    init(userDefaults: UserDefaults = .standard) {
+    init(userDefaults: UserDefaults = SharedPreviewSettings.userDefaults()) {
         self.userDefaults = userDefaults
 
-        let storedLight = userDefaults.string(forKey: Self.followThemeLightDefaultsKey)
-        let storedDark = userDefaults.string(forKey: Self.followThemeDarkDefaultsKey)
-        let storedSepia = userDefaults.string(forKey: Self.followThemeSepiaDefaultsKey)
-        let storedSepiaMode = userDefaults.string(forKey: Self.followThemeSepiaModeDefaultsKey)
+        let storedLight = userDefaults.string(forKey: SharedPreviewSettings.followThemeLightDefaultsKey)
+        let storedDark = userDefaults.string(forKey: SharedPreviewSettings.followThemeDarkDefaultsKey)
+        let storedSepia = userDefaults.string(forKey: SharedPreviewSettings.followThemeSepiaDefaultsKey)
+        let storedSepiaMode = userDefaults.string(forKey: SharedPreviewSettings.followThemeSepiaModeDefaultsKey)
 
         let resolvedLight = HighlightJSThemeCatalog.resolvedThemeIdentifier(
             primary: storedLight ?? HighlightJSThemeCatalog.defaultFollowThemeLightIdentifier,
@@ -77,7 +74,7 @@ final class SyntaxHighlightSettingsStore: ObservableObject {
         }
 
         followThemeLightIdentifier = resolved
-        userDefaults.set(resolved, forKey: Self.followThemeLightDefaultsKey)
+        userDefaults.set(resolved, forKey: SharedPreviewSettings.followThemeLightDefaultsKey)
     }
 
     func setFollowThemeDarkIdentifier(_ identifier: String) {
@@ -91,7 +88,7 @@ final class SyntaxHighlightSettingsStore: ObservableObject {
         }
 
         followThemeDarkIdentifier = resolved
-        userDefaults.set(resolved, forKey: Self.followThemeDarkDefaultsKey)
+        userDefaults.set(resolved, forKey: SharedPreviewSettings.followThemeDarkDefaultsKey)
     }
 
     func setFollowThemeSepiaMode(_ mode: FollowThemeSepiaMode) {
@@ -100,7 +97,7 @@ final class SyntaxHighlightSettingsStore: ObservableObject {
         }
 
         followThemeSepiaMode = mode
-        userDefaults.set(mode.rawValue, forKey: Self.followThemeSepiaModeDefaultsKey)
+        userDefaults.set(mode.rawValue, forKey: SharedPreviewSettings.followThemeSepiaModeDefaultsKey)
     }
 
     func setFollowThemeSepiaIdentifier(_ identifier: String) {
@@ -114,11 +111,6 @@ final class SyntaxHighlightSettingsStore: ObservableObject {
         }
 
         followThemeSepiaIdentifier = resolved
-        userDefaults.set(resolved, forKey: Self.followThemeSepiaDefaultsKey)
+        userDefaults.set(resolved, forKey: SharedPreviewSettings.followThemeSepiaDefaultsKey)
     }
-
-    private static let followThemeLightDefaultsKey = "syntaxHighlight.followTheme.light"
-    private static let followThemeDarkDefaultsKey = "syntaxHighlight.followTheme.dark"
-    private static let followThemeSepiaModeDefaultsKey = "syntaxHighlight.followTheme.sepia.mode"
-    private static let followThemeSepiaDefaultsKey = "syntaxHighlight.followTheme.sepia.theme"
 }

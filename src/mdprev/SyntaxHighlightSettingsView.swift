@@ -7,16 +7,6 @@ struct SyntaxHighlightSettingsView: View {
 
     var body: some View {
         Form {
-            Section("Quick Look Preview Extension") {
-                Button("Open Quick Look Extension Settings") {
-                    openQuickLookPreviewExtensionSettings()
-                }
-
-                Text("Use System Settings to enable or prioritize the MDPrev Quick Look extension.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-
             Section("Follow Theme") {
                 themeSelectionRow(
                     title: "Light Mode Theme",
@@ -50,6 +40,16 @@ struct SyntaxHighlightSettingsView: View {
             Text("These themes are used when Syntax Highlight is set to Follow Theme.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
+
+            Section("Quick Look Preview Extension") {
+                Button("Open Quick Look Extension Settings") {
+                    openQuickLookPreviewExtensionSettings()
+                }
+
+                Text("Use System Settings to enable or prioritize the MDPrev Quick Look extension.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
         }
         .formStyle(.grouped)
         .frame(width: 560, height: 360)
